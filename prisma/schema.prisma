@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String              @id @default(uuid())
+  username        String              @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  email           String?
+  status          UserStatus
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  userRoles       UserRole[]
+  qualifications  UserQualification[]
+}
+
+model Role {
+  id          String     @id @default(uuid())
+  roleName    String     @unique
+  description String?
+  userRoles   UserRole[]
+}
+
+model UserRole {
+  id     String @id @default(uuid())
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId], name: "userId_roleId")
+}
+
+model Configuration {
+  id          String @id @default(uuid())
+  key         String @unique
+  value       String
+  description String?
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  entity    String
+  action    String
+  timestamp DateTime @default(now())
+}
+
+model Subject {
+  id          String   @id @default(uuid())
+  subjectName String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Question {
+  id           String   @id @default(uuid())
+  questionText String
+  category     String?
+  difficulty   String?
+  answer       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Qualification {
+  id          String             @id @default(uuid())
+  name        String             @unique
+  description String?
+  status      QualificationStatus @default(CURRENT)
+  issuedAt    DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  assignments UserQualification[]
+
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model UserQualification {
+  id              String           @id @default(uuid())
+  userId          String
+  qualificationId String
+  assignedAt      DateTime         @default(now())
+  completedAt     DateTime?
+  revokedAt       DateTime?
+  endReason       String?
+  status          AssignmentStatus @default(ACTIVE)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  qualification   Qualification    @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([qualificationId])
+  @@index([status])
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+enum QualificationStatus {
+  CURRENT
+  EXPIRING
+  EXPIRING_CRITICAL
+  EXPIRED
+  SUSPENDED
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  COMPLETED
+  REVOKED
+}
