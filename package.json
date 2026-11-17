@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "start": "electron .",
-    "test": "echo \"No tests yet\"",
+    "test": "vitest run",
     "postinstall": "prisma generate"
   },
   "repository": {
@@ -41,6 +41,7 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^5.1.0"
   }
 }

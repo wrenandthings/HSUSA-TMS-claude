@@ -1,6 +1,7 @@
 const { ipcMain } = require("electron");
 const { PrismaClient } = require("@prisma/client");
 const { getCurrentUserId } = require("./auth-context");
+const { calculateStatus } = require("./qualification-status");
 
 const prisma = new PrismaClient();
 
@@ -11,16 +12,6 @@ async function requireAdministrator() {
     if (!role) throw new Error("Administrator role is not configured");
     const assignment = await prisma.userRole.findFirst({ where: { userId, roleId: role.id } });
     if (!assignment) throw new Error("Administrator permission required");
-}
-
-function calculateStatus(expiresAt, status) {
-    if (status === "SUSPENDED") return status;
-    if (!expiresAt) return "CURRENT";
-    const days = (new Date(expiresAt).getTime() - Date.now()) / 86400000;
-    if (days < 0) return "EXPIRED";
-    if (days <= 7) return "EXPIRING_CRITICAL";
-    if (days <= 30) return "EXPIRING";
-    return "CURRENT";
 }
 
 function serialize(record) {
