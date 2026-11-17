@@ -3,6 +3,8 @@ import { UserService } from "./UserService";
 import ChangePasswordForm from "./ChangePasswordForm";
 import EditUserForm from "./EditUserForm";
 import { QualificationService } from "../qualifications/QualificationService";
+import QualificationStatusBadge from "../qualifications/QualificationStatusBadge";
+import { formatQualificationDate } from "../qualifications/qualificationStatusDisplay";
 
 interface Props {
     userId: string;
@@ -255,7 +257,7 @@ export default function UserDetailPage(props: Props) {
             ) : (
                 <ul>
                     {activeQualifications.map((qualification) => (
-                        <li key={qualification.id}>{qualification.name}</li>
+                        <li key={qualification.id}>{qualification.name} <QualificationStatusBadge status={qualification.status} /> <small>Expires: {formatQualificationDate(qualification.expiresAt)}</small></li>
                     ))}
                 </ul>
             )}

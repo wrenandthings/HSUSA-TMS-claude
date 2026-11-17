@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { QualificationService, QualificationStatus } from "./QualificationService";
+import QualificationStatusBadge from "./QualificationStatusBadge";
+import { formatQualificationDate } from "./qualificationStatusDisplay";
 
 interface Props { onBack: () => void; }
 type User = { id: string; username: string };
@@ -156,8 +158,8 @@ export default function QualificationListPage(props: Props) {
                 <h1>{selected.name}</h1>
                 {message && <p>{message}</p>}
                 <p>{selected.description}</p>
-                <p><strong>Status:</strong> {selected.status}</p>
-                <p><strong>Expires:</strong> {selected.expiresAt ? new Date(selected.expiresAt).toLocaleDateString() : "No expiration"}</p>
+                <p><strong>Status:</strong> <QualificationStatusBadge status={selected.status} /></p>
+                <p><strong>Expires:</strong> {formatQualificationDate(selected.expiresAt)}</p>
                 <button onClick={() => startEdit(selected)}>Edit Qualification</button>
                 <h2>Assigned Users</h2>
                 <select defaultValue="" onChange={e => { if (e.target.value) void assign(e.target.value); }}>
@@ -182,8 +184,8 @@ export default function QualificationListPage(props: Props) {
                 <tbody>{items.map(item => <tr key={item.id}>
                     <td><button onClick={() => void openDetails(item)}>{item.name}</button></td>
                     <td>{item.assignments?.filter(a => a.status === "ACTIVE").length ?? 0}</td>
-                    <td>{item.status}</td>
-                    <td>{item.expiresAt ? new Date(item.expiresAt).toLocaleDateString() : "No expiration"}</td>
+                    <td><QualificationStatusBadge status={item.status} /></td>
+                    <td>{formatQualificationDate(item.expiresAt)}</td>
                     <td><button onClick={() => startEdit(item)}>Edit</button> <button onClick={() => void remove(item)}>Delete</button></td>
                 </tr>)}</tbody>
             </table>
