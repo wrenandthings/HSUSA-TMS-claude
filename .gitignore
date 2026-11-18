@@ -141,3 +141,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# SQLite databases are created locally by `prisma migrate deploy` and
+# `prisma db seed` (see README). Never commit them.
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
