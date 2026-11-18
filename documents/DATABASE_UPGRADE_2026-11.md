@@ -67,6 +67,6 @@ Open the app, go to Qualifications, and confirm:
 - each one's assigned people still appear, with the dates the qualification had before;
 - the 11 standard qualifications are listed, with renewal periods.
 
-If one of your own qualifications is the same as a standard one under a different name or code (for example, "Pilot In Command" next to the new `PIC`), you will see both. Keep the one with people assigned: edit it to use the standard code (first rename or change the code of the new, empty one, then delete it, which is allowed because it has no history).
+If one of your own qualifications is the same as a standard one under a different name or code (for example, "Pilot In Command" next to the new `PIC`), you will see both. To merge them, delete the new, empty one first (allowed because nobody was ever assigned to it), then edit yours to use the standard code and renewal period.
 
 Rehearsed 2026-11-17 by Finch on a database built with `prisma db push` from `main`'s schema, with sample assignments: dates moved to each assignment, a suspended qualification became suspended assignments, and the seed skipped an existing HUET.
