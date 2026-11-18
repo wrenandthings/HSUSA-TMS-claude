@@ -59,7 +59,17 @@ async function main() {
             key: "SessionTimeoutMinutes",
             value: "30",
             description: "Session timeout"
-        }
+        },
+
+        // Added 2026-11-17 from the Seed Data Specification v1.0.
+        { key: "Alert90Days", value: "TRUE", description: "Qualification alert 90 days before expiration" },
+        { key: "Alert60Days", value: "TRUE", description: "Qualification alert 60 days before expiration" },
+        { key: "Alert30Days", value: "TRUE", description: "Qualification alert 30 days before expiration" },
+        { key: "Alert7Days", value: "TRUE", description: "Qualification alert 7 days before expiration" },
+        { key: "BackupRetentionDays", value: "90", description: "Days to keep backups" },
+        { key: "AuditRetentionDays", value: "365", description: "Days to keep audit records" },
+        { key: "MinimumPasswordLength", value: "12", description: "Minimum password length" },
+        { key: "PasswordComplexityRequired", value: "TRUE", description: "Require complex passwords" }
     ];
 
     for (const config of configs) {
@@ -125,8 +135,72 @@ async function main() {
         }
     }
 
+    await seedQualifications();
+    await seedPermissions(adminRole);
+
     console.log("Seed Complete");
 } 
+
+// Qualification catalog and renewal months from the Seed Data Specification
+// v1.0; names from the Qualification Rules Matrix v1.0. An entry is skipped if
+// its code or name already exists, so existing data is never overwritten.
+const QUALIFICATIONS = [
+    { code: "PIC", name: "PIC", description: "Pilot In Command", renewalMonths: 12 },
+    { code: "IFR", name: "IFR", renewalMonths: 6 },
+    { code: "OFFSHORE_IFR", name: "Offshore IFR", renewalMonths: 12 },
+    { code: "NVG", name: "NVG", renewalMonths: 12 },
+    { code: "HAA", name: "HAA", renewalMonths: 24 },
+    { code: "SAR", name: "SAR", renewalMonths: 24 },
+    { code: "CRM", name: "CRM", renewalMonths: 12 },
+    { code: "HUET", name: "HUET", renewalMonths: 48 },
+    { code: "COMM_SPEC", name: "Communications Specialist", renewalMonths: 12 },
+    { code: "INSTRUCTOR", name: "Instructor", renewalMonths: 24 },
+    { code: "CHECK_AIRMAN", name: "Check Airman", renewalMonths: 24 }
+];
+
+async function seedQualifications() {
+    for (const qualification of QUALIFICATIONS) {
+        const existing = await prisma.qualification.findFirst({
+            where: { OR: [{ code: qualification.code }, { name: qualification.name }] }
+        });
+        if (!existing) await prisma.qualification.create({ data: qualification });
+    }
+}
+
+// Permission codes from the Seed Data Specification v1.0. The spec gives the
+// Administrator every permission; the other roles' assignments are described
+// in business terms ("Question Management") and are not mapped to codes yet.
+const PERMISSIONS: Record<string, string[]> = {
+    Users: ["USER_VIEW", "USER_CREATE", "USER_EDIT", "USER_DELETE"],
+    Roles: ["ROLE_VIEW", "ROLE_CREATE", "ROLE_EDIT", "ROLE_DELETE"],
+    Questions: ["QUESTION_VIEW", "QUESTION_CREATE", "QUESTION_EDIT", "QUESTION_DELETE", "QUESTION_IMPORT", "QUESTION_EXPORT"],
+    Qualifications: ["QUALIFICATION_VIEW", "QUALIFICATION_ASSIGN", "QUALIFICATION_APPROVE", "QUALIFICATION_RENEW", "QUALIFICATION_SUSPEND", "QUALIFICATION_RESTORE", "QUALIFICATION_OVERRIDE"],
+    Reporting: ["REPORT_VIEW", "REPORT_EXPORT"],
+    Administration: ["ADMIN_CONFIGURATION", "ADMIN_BACKUP", "ADMIN_RESTORE", "ADMIN_SECURITY"]
+};
+
+function permissionName(code: string) {
+    return code.split("_").map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(" ");
+}
+
+async function seedPermissions(adminRole: { id: string } | null) {
+    for (const [category, codes] of Object.entries(PERMISSIONS)) {
+        for (const permissionCode of codes) {
+            const permission = await prisma.permission.upsert({
+                where: { permissionCode },
+                update: {},
+                create: { permissionCode, name: permissionName(permissionCode), category }
+            });
+            if (adminRole) {
+                await prisma.rolePermission.upsert({
+                    where: { roleId_permissionId: { roleId: adminRole.id, permissionId: permission.id } },
+                    update: {},
+                    create: { roleId: adminRole.id, permissionId: permission.id }
+                });
+            }
+        }
+    }
+}
 
 main()
     .catch(console.error)

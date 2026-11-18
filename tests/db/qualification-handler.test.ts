@@ -46,7 +46,7 @@ describe("qualification IPC handlers", () => {
 
     it("let an administrator create, assign, and renew, recording them as the actor", async () => {
         auth.setCurrentUser(adminId);
-        const created = await call("qualifications-create", { code: "IFR", name: "Instrument", renewalMonths: "6" });
+        const created = await call("qualifications-create", { code: "TEST_IFR", name: "Test Instrument", renewalMonths: "6" });
         expect(created.success).toBe(true);
         const assigned = await call("qualifications-assign-user", { qualificationId: created.qualification.id, userId: pilotId, awardedDate: "2026-09-01" });
         expect(assigned.assignment.expirationDate.toISOString().slice(0, 10)).toBe("2027-03-01");
@@ -58,6 +58,7 @@ describe("qualification IPC handlers", () => {
 
     it("return validation problems as a message instead of throwing", async () => {
         auth.setCurrentUser(adminId);
+        expect(await call("qualifications-create", { code: "PIC", name: "Another PIC" })).toEqual({ success: false, message: "A qualification with that code or name already exists." });
         expect(await call("qualifications-create", { code: "", name: "No code" })).toEqual({ success: false, message: "Qualification code is required." });
     });
 });

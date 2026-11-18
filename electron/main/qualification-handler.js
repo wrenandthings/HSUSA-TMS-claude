@@ -23,6 +23,9 @@ function adminAction(work) {
             const actorId = await requireAdministrator();
             return { success: true, ...(await work(input, actorId)) };
         } catch (error) {
+            if (error && error.code === "P2002") {
+                return { success: false, message: "A qualification with that code or name already exists." };
+            }
             return { success: false, message: error instanceof Error ? error.message : String(error) };
         }
     };
