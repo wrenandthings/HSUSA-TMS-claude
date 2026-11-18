@@ -34,5 +34,6 @@ contextBridge.exposeInMainWorld("hsusa", {
     updateQualification: (qualification) => ipcRenderer.invoke("qualifications-update", qualification),
     deleteQualification: (id) => ipcRenderer.invoke("qualifications-delete", id),
     assignQualificationUser: (input) => ipcRenderer.invoke("qualifications-assign-user", input),
+    updateQualificationAssignment: (input) => ipcRenderer.invoke("qualifications-update-assignment", input),
     unassignQualificationUser: (input) => ipcRenderer.invoke("qualifications-unassign-user", input)
 });

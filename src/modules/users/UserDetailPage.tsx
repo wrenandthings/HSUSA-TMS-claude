@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { UserService } from "./UserService";
 import ChangePasswordForm from "./ChangePasswordForm";
 import EditUserForm from "./EditUserForm";
-import { QualificationService } from "../qualifications/QualificationService";
+import { activeAssignmentFor, QualificationService } from "../qualifications/QualificationService";
 import QualificationStatusBadge from "../qualifications/QualificationStatusBadge";
 import { formatQualificationDate } from "../qualifications/qualificationStatusDisplay";
 
@@ -118,7 +118,7 @@ export default function UserDetailPage(props: Props) {
             const removals = originalQualificationIds.filter((id) => !draftSet.has(id));
 
             for (const qualificationId of additions) {
-                const result = await qualificationService.assignUser(qualificationId, props.userId);
+                const result = await qualificationService.assignUser({ qualificationId, userId: props.userId });
                 if (!result?.success) {
                     throw new Error(result?.message ?? "Unable to assign qualification.");
                 }
@@ -203,6 +203,7 @@ export default function UserDetailPage(props: Props) {
                 </button>
 
                 <h1>Edit Qualifications</h1>
+                <p><small>Qualifications added here start with no dates. Set the awarded and expiration dates from the qualification's own page.</small></p>
                 {message && <p style={{ color: "darkred" }}>{message}</p>}
 
                 <div style={{ marginBottom: "20px" }}>
@@ -257,7 +258,11 @@ export default function UserDetailPage(props: Props) {
             ) : (
                 <ul>
                     {activeQualifications.map((qualification) => (
-                        <li key={qualification.id}>{qualification.name} <QualificationStatusBadge status={qualification.status} /> <small>Expires: {formatQualificationDate(qualification.expiresAt)}</small></li>
+                        <li key={qualification.id}>
+                            {qualification.name}{" "}
+                            <QualificationStatusBadge status={activeAssignmentFor(qualification, props.userId)?.qualificationStatus ?? "CURRENT"} />{" "}
+                            <small>Expires: {formatQualificationDate(activeAssignmentFor(qualification, props.userId)?.expirationDate)}</small>
+                        </li>
                     ))}
                 </ul>
             )}

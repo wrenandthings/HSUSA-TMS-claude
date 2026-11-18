@@ -1,9 +1,10 @@
 const { ipcMain } = require("electron");
 const { PrismaClient } = require("@prisma/client");
 const { getCurrentUserId } = require("./auth-context");
-const { calculateStatus } = require("./qualification-status");
+const { createQualificationRepository } = require("./qualification-repository");
 
 const prisma = new PrismaClient();
+const repository = createQualificationRepository(prisma);
 
 async function requireAdministrator() {
     const userId = getCurrentUserId();
@@ -12,120 +13,50 @@ async function requireAdministrator() {
     if (!role) throw new Error("Administrator role is not configured");
     const assignment = await prisma.userRole.findFirst({ where: { userId, roleId: role.id } });
     if (!assignment) throw new Error("Administrator permission required");
+    return userId;
 }
 
-function serialize(record) {
-    return { ...record, status: calculateStatus(record.expiresAt, record.status) };
-}
-
-async function audit(action) {
-    await prisma.auditLog.create({ data: { entity: "Qualification", action } });
-}
-
-function qualificationData(input) {
-    return {
-        name: String(input.name ?? "").trim(),
-        description: input.description ? String(input.description).trim() : null,
-        issuedAt: input.issuedAt ? new Date(input.issuedAt) : null,
-        expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
-        status: input.status || "CURRENT"
+// Runs an administrator-only change and reports failures as { success: false, message }.
+function adminAction(work) {
+    return async (event, input) => {
+        try {
+            const actorId = await requireAdministrator();
+            return { success: true, ...(await work(input, actorId)) };
+        } catch (error) {
+            return { success: false, message: error instanceof Error ? error.message : String(error) };
+        }
     };
 }
 
-function qualificationInclude() {
-    return { assignments: { include: { user: true }, orderBy: { assignedAt: "desc" } } };
-}
-
 function registerQualificationHandlers() {
-    ipcMain.handle("qualifications-get-all", async () => {
-        const records = await prisma.qualification.findMany({
-            include: qualificationInclude(),
-            orderBy: { name: "asc" }
-        });
-        return records.map(serialize);
-    });
+    ipcMain.handle("qualifications-get-all", async () => repository.list());
 
-    ipcMain.handle("qualifications-get-by-id", async (event, id) => {
-        const record = await prisma.qualification.findUnique({
-            where: { id },
-            include: qualificationInclude()
-        });
-        return record ? serialize(record) : null;
-    });
+    ipcMain.handle("qualifications-get-by-id", async (event, id) => repository.getById(id));
 
-    ipcMain.handle("qualifications-create", async (event, input) => {
-        await requireAdministrator();
-        const created = await prisma.qualification.create({
-            data: qualificationData(input),
-            include: qualificationInclude()
-        });
-        await audit("QUALIFICATION_CREATED");
-        return { success: true, qualification: serialize(created) };
-    });
+    ipcMain.handle("qualifications-create", adminAction(async (input, actorId) => ({
+        qualification: await repository.create(input, actorId)
+    })));
 
-    ipcMain.handle("qualifications-update", async (event, input) => {
-        await requireAdministrator();
-        const updated = await prisma.qualification.update({
-            where: { id: input.id },
-            data: qualificationData(input),
-            include: qualificationInclude()
-        });
-        await audit("QUALIFICATION_UPDATED");
-        return { success: true, qualification: serialize(updated) };
-    });
+    ipcMain.handle("qualifications-update", adminAction(async (input, actorId) => ({
+        qualification: await repository.update(input, actorId)
+    })));
 
-    ipcMain.handle("qualifications-delete", async (event, id) => {
-        await requireAdministrator();
-        await prisma.qualification.delete({ where: { id } });
-        await audit("QUALIFICATION_DELETED");
-        return { success: true };
-    });
+    ipcMain.handle("qualifications-delete", adminAction(async (id, actorId) => {
+        await repository.remove(id, actorId);
+        return {};
+    }));
 
-    ipcMain.handle("qualifications-assign-user", async (event, input) => {
-        await requireAdministrator();
-        const existing = await prisma.userQualification.findFirst({
-            where: { userId: input.userId, qualificationId: input.qualificationId, status: "ACTIVE" }
-        });
-        if (!existing) {
-            await prisma.userQualification.create({
-                data: { userId: input.userId, qualificationId: input.qualificationId, status: "ACTIVE" }
-            });
-            await audit("QUALIFICATION_ASSIGNED");
-        }
-        return { success: true };
-    });
+    ipcMain.handle("qualifications-assign-user", adminAction(async (input, actorId) => ({
+        assignment: await repository.assign(input, actorId)
+    })));
 
-    ipcMain.handle("qualifications-unassign-user", async (event, input) => {
-        await requireAdministrator();
-        const active = await prisma.userQualification.findFirst({
-            where: { userId: input.userId, qualificationId: input.qualificationId, status: "ACTIVE" }
-        });
+    ipcMain.handle("qualifications-update-assignment", adminAction(async (input, actorId) => ({
+        assignment: await repository.updateAssignment(input, actorId)
+    })));
 
-        if (active) {
-            // Older databases have a unique(userId, qualificationId, status) index.
-            // Remove stale revoked history before changing ACTIVE to REVOKED so that
-            // unassign remains usable until the schema migration is applied.
-            await prisma.$transaction(async (transaction) => {
-                await transaction.userQualification.deleteMany({
-                    where: {
-                        userId: input.userId,
-                        qualificationId: input.qualificationId,
-                        status: "REVOKED"
-                    }
-                });
-                await transaction.userQualification.update({
-                    where: { id: active.id },
-                    data: {
-                        status: "REVOKED",
-                        revokedAt: new Date(),
-                        endReason: input.reason || "Removed by administrator"
-                    }
-                });
-            });
-            await audit("QUALIFICATION_UNASSIGNED");
-        }
-        return { success: true };
-    });
+    ipcMain.handle("qualifications-unassign-user", adminAction(async (input, actorId) => ({
+        assignment: await repository.unassign(input, actorId)
+    })));
 }
 
 module.exports = { registerQualificationHandlers };
