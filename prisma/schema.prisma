@@ -8,24 +8,35 @@ datasource db {
 }
 
 model User {
-  id              String              @id @default(uuid())
-  username        String              @unique
-  passwordHash    String
-  firstName       String
-  lastName        String
-  email           String?
-  status          UserStatus
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  userRoles       UserRole[]
-  qualifications  UserQualification[]
+  id             String              @id @default(uuid())
+  username       String              @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  email          String?
+  status         UserStatus
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  userRoles      UserRole[]
+  qualifications UserQualification[]
+  auditLogs      AuditLog[]
+  backups        Backup[]
 }
 
 model Role {
-  id          String     @id @default(uuid())
-  roleName    String     @unique
+  id          String           @id @default(uuid())
+  roleName    String           @unique
   description String?
   userRoles   UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id             String           @id @default(uuid())
+  permissionCode String           @unique
+  name           String
+  category       String
+  roles          RolePermission[]
 }
 
 model UserRole {
@@ -38,18 +49,48 @@ model UserRole {
   @@unique([userId, roleId], name: "userId_roleId")
 }
 
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
 model Configuration {
-  id          String @id @default(uuid())
-  key         String @unique
+  id          String  @id @default(uuid())
+  key         String  @unique
   value       String
   description String?
 }
 
+// action is still free text (for example QUALIFICATION_ASSIGNED). The Prisma
+// Schema spec's AuditAction enum can replace it once all callers are updated.
 model AuditLog {
   id        String   @id @default(uuid())
+  userId    String?
   entity    String
+  entityId  String?
   action    String
+  oldValue  String?
+  newValue  String?
   timestamp DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([timestamp])
+}
+
+model Backup {
+  id           String   @id @default(uuid())
+  backupName   String
+  fileLocation String
+  createdAt    DateTime @default(now())
+  createdBy    String?
+  sizeBytes    BigInt
+  user         User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
 }
 
 model Subject {
@@ -70,19 +111,19 @@ model Question {
   updatedAt    DateTime @updatedAt
 }
 
+// A catalog entry such as PIC or HUET. Dates belong to each person's
+// assignment (UserQualification), not to the catalog entry.
+// renewalMonths is how long an award lasts; null means it does not expire.
 model Qualification {
-  id          String             @id @default(uuid())
-  name        String             @unique
-  description String?
-  status      QualificationStatus @default(CURRENT)
-  issuedAt    DateTime?
-  expiresAt   DateTime?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  assignments UserQualification[]
-
-  @@index([status])
-  @@index([expiresAt])
+  id            String              @id @default(uuid())
+  code          String              @unique
+  name          String              @unique
+  description   String?
+  renewalMonths Int?
+  active        Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  assignments   UserQualification[]
 }
 
 model UserQualification {
@@ -94,12 +135,16 @@ model UserQualification {
   revokedAt       DateTime?
   endReason       String?
   status          AssignmentStatus @default(ACTIVE)
+  awardedDate     DateTime?
+  expirationDate  DateTime?
+  suspended       Boolean          @default(false)
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   qualification   Qualification    @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([qualificationId])
   @@index([status])
+  @@index([expirationDate])
 }
 
 enum UserStatus {

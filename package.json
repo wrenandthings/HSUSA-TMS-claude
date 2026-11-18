@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "start": "electron .",
+    "pretest": "prisma generate",
     "test": "vitest run",
     "postinstall": "prisma generate"
   },
