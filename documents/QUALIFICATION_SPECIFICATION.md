@@ -1,9 +1,9 @@
 # Qualification Specification
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Status:** Authoritative  
 **Owner:** HSUSA TMS  
-**Effective date:** 2026-09-19  
+**Effective date:** 2026-11-17  
 
 ## 1. Purpose
 
@@ -17,12 +17,14 @@ A qualification definition is a reusable catalog item. It may be assigned to zer
 
 Each definition contains:
 
+- Code (unique, for example `PIC`)
 - Name
 - Description
-- Issued date, when applicable
-- Expiration date, when applicable
-- Current status
+- Renewal period in months, or none if it does not expire
+- Active/inactive flag
 - Assignment history
+
+Dates and status belong to each person's assignment, not to the definition (section 3). A definition with assignment history cannot be deleted; it is marked inactive instead.
 
 Creating a qualification definition does not assign it to a user. Assignment is a separate action performed from the user or qualification assignment view.
 
@@ -37,6 +39,9 @@ Each assignment should retain, at minimum:
 - User
 - Qualification
 - Date assigned
+- Date awarded, when applicable
+- Expiration date, when applicable. If only the awarded date is given, the expiration date is the awarded date plus the definition's renewal period.
+- Suspended flag
 - Assigning actor, when actor tracking is available
 - Active/revoked state
 - Date revoked or completed, when applicable
@@ -46,14 +51,14 @@ Removing a qualification from a user's active assignments changes the assignment
 
 ## 4. Status and expiration rules
 
-Qualification status is calculated from the expiration date unless the qualification is manually suspended.
+Each person's qualification status is calculated from the expiration date of their assignment unless that assignment is manually suspended. Days are counted in whole calendar days.
 
-- A qualification with no expiration date remains `CURRENT` indefinitely.
+- An assignment with no expiration date remains `CURRENT` indefinitely.
 - More than 30 days remain: `CURRENT`.
 - 30 days or fewer remain, but more than 7 days remain: `EXPIRING`.
 - 7 days or fewer remain, including the expiration date: `EXPIRING_CRITICAL`.
 - The expiration date has passed: `EXPIRED`.
-- A manually suspended qualification: `SUSPENDED`.
+- A manually suspended assignment: `SUSPENDED`.
 - `SUSPENDED` overrides all date-based statuses.
 
 The application must display the 30-day warning and the 7-day critical warning distinctly. A critical warning does not by itself make the qualification invalid; it remains usable until the expiration date unless suspended by an authorized administrator.
@@ -70,7 +75,7 @@ Administrators may additionally:
 
 - Create, edit, and delete qualification definitions
 - Assign and unassign qualifications
-- Suspend or reinstate qualifications
+- Suspend or reinstate a person's qualification
 - Correct assignment data
 
 All changes to definitions, assignments, or status must create an audit entry.
@@ -124,3 +129,4 @@ If some actor or before/after fields are not yet available, the event must still
 | Version | Date | Status | Summary |
 |---|---|---|---|
 | 1.0 | 2026-09-19 | Authoritative | Defined reusable qualifications, many-to-many assignments, 30/7-day expiration warnings, visibility, retained assignment history, and deferred approval workflow. |
+| 1.1 | 2026-11-17 | Authoritative | Owner decision: dates, status, and suspension are per person (on the assignment), matching the Prisma Schema and Qualification Rules Matrix. Definitions gain a code, renewal period, and active flag. Definitions with history cannot be deleted. Calendar-day counting stated. Edited by Finch (AI assistant). |
