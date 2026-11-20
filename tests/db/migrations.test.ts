@@ -25,7 +25,7 @@ describe("seed on a new database", () => {
         const first = { roles: await db.prisma.role.count(), users: await db.prisma.user.count(), userRoles: await db.prisma.userRole.count() };
         db.run("tsx", ["prisma/seed.ts"]);
         expect({ roles: await db.prisma.role.count(), users: await db.prisma.user.count(), userRoles: await db.prisma.userRole.count() }).toEqual(first);
-        expect(first.roles).toBe(10);
+        expect(first.roles).toBe(12);
     });
 
     it("creates the admin account with the Administrator role", async () => {

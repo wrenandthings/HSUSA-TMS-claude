@@ -1,6 +1,6 @@
 # Qualification Specification
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Status:** Authoritative  
 **Owner:** HSUSA TMS  
 **Effective date:** 2026-11-17  
@@ -61,17 +61,13 @@ Each person's qualification status is calculated from the expiration date of the
 - A manually suspended assignment: `SUSPENDED`.
 - `SUSPENDED` overrides all date-based statuses.
 
-The application must display the 30-day warning and the 7-day critical warning distinctly. A critical warning does not by itself make the qualification invalid; it remains usable until the expiration date unless suspended by an authorized administrator.
+The application must display the 30-day warning and the 7-day critical warning distinctly. A critical warning does not by itself make the qualification invalid; it remains usable until the expiration date unless suspended by a qualification manager.
 
 ## 5. Visibility and authorization
 
-Non-Administrators may view:
+All users may view all qualification definitions and assignments (owner decision, 2026-11-19).
 
-- Qualification definitions
-- Qualification assignments for roles and other permitted organizational views
-- Their own qualification assignments
-
-Administrators may additionally:
+Qualification managers are users with any of these roles: Administrator, Training Manager, Director of Operations, Chief Pilot, Maintenance Manager, Quality Control (owner decision, 2026-11-19). For now the Training Manager decides all requirements for every user. Qualification managers may additionally:
 
 - Create, edit, and delete qualification definitions
 - Assign and unassign qualifications
@@ -130,3 +126,4 @@ If some actor or before/after fields are not yet available, the event must still
 |---|---|---|---|
 | 1.0 | 2026-09-19 | Authoritative | Defined reusable qualifications, many-to-many assignments, 30/7-day expiration warnings, visibility, retained assignment history, and deferred approval workflow. |
 | 1.1 | 2026-11-17 | Authoritative | Owner decision: dates, status, and suspension are per person (on the assignment), matching the Prisma Schema and Qualification Rules Matrix. Definitions gain a code, renewal period, and active flag. Definitions with history cannot be deleted. Calendar-day counting stated. Edited by Finch (AI assistant). |
+| 1.2 | 2026-11-20 | Authoritative | Owner decisions 2026-11-19: all qualifications are visible to all users; qualification managers are Administrator, Training Manager, Director of Operations, Chief Pilot, Maintenance Manager and Quality Control (the last two are new roles). Edited by Finch (AI assistant). |

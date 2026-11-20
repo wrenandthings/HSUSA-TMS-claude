@@ -41,7 +41,7 @@ describe("qualification IPC handlers", () => {
         auth.clearCurrentUser();
         expect(await call("qualifications-create", { code: "X", name: "X" })).toEqual({ success: false, message: "Authentication required" });
         auth.setCurrentUser(pilotId);
-        expect(await call("qualifications-create", { code: "X", name: "X" })).toEqual({ success: false, message: "Administrator permission required" });
+        expect(await call("qualifications-create", { code: "X", name: "X" })).toEqual({ success: false, message: "You do not have permission to manage qualifications" });
     });
 
     it("let an administrator create, assign, and renew, recording them as the actor", async () => {
@@ -54,6 +54,20 @@ describe("qualification IPC handlers", () => {
         expect(renewed.success).toBe(true);
         const actors = new Set((await db.prisma.auditLog.findMany()).map(e => e.userId));
         expect([...actors]).toEqual([adminId]);
+    });
+
+    it("let every qualification-manager role make changes, and refuse Pilot and Maintenance", async () => {
+        const { QUALIFICATION_MANAGER_ROLES } = require(path.resolve(__dirname, "../../electron/main/qualification-handler.js"));
+        expect(QUALIFICATION_MANAGER_ROLES).toEqual(["Administrator", "Training_Manager", "Director_of_Operations", "Chief_Pilot", "Maintenance_Manager", "Quality_Control"]);
+        const allowed: string[] = [];
+        for (const roleName of [...QUALIFICATION_MANAGER_ROLES, "Pilot", "Maintenance"]) {
+            const role = await db.prisma.role.findUniqueOrThrow({ where: { roleName } });
+            const user = await db.prisma.user.create({ data: { username: `u-${roleName}`, passwordHash: "x", firstName: "T", lastName: roleName, status: "ACTIVE", userRoles: { create: { roleId: role.id } } } });
+            auth.setCurrentUser(user.id);
+            const result = await call("qualifications-create", { code: `T_${roleName}`, name: `Test ${roleName}` });
+            if (result.success) allowed.push(roleName);
+        }
+        expect(allowed).toEqual(QUALIFICATION_MANAGER_ROLES);
     });
 
     it("return validation problems as a message instead of throwing", async () => {

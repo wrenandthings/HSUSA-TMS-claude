@@ -6,21 +6,32 @@ const { createQualificationRepository } = require("./qualification-repository");
 const prisma = new PrismaClient();
 const repository = createQualificationRepository(prisma);
 
-async function requireAdministrator() {
+// Roles that may create, assign, renew, suspend and remove qualifications
+// (owner decisions 2026-11-19, questions 20 and 33). Everyone may view them.
+const QUALIFICATION_MANAGER_ROLES = [
+    "Administrator",
+    "Training_Manager",
+    "Director_of_Operations",
+    "Chief_Pilot",
+    "Maintenance_Manager",
+    "Quality_Control"
+];
+
+async function requireQualificationManager() {
     const userId = getCurrentUserId();
     if (!userId) throw new Error("Authentication required");
-    const role = await prisma.role.findUnique({ where: { roleName: "Administrator" } });
-    if (!role) throw new Error("Administrator role is not configured");
-    const assignment = await prisma.userRole.findFirst({ where: { userId, roleId: role.id } });
-    if (!assignment) throw new Error("Administrator permission required");
+    const assignment = await prisma.userRole.findFirst({
+        where: { userId, role: { roleName: { in: QUALIFICATION_MANAGER_ROLES } } }
+    });
+    if (!assignment) throw new Error("You do not have permission to manage qualifications");
     return userId;
 }
 
-// Runs an administrator-only change and reports failures as { success: false, message }.
-function adminAction(work) {
+// Runs a qualification-manager change and reports failures as { success: false, message }.
+function managerAction(work) {
     return async (event, input) => {
         try {
-            const actorId = await requireAdministrator();
+            const actorId = await requireQualificationManager();
             return { success: true, ...(await work(input, actorId)) };
         } catch (error) {
             if (error && error.code === "P2002") {
@@ -36,30 +47,30 @@ function registerQualificationHandlers() {
 
     ipcMain.handle("qualifications-get-by-id", async (event, id) => repository.getById(id));
 
-    ipcMain.handle("qualifications-create", adminAction(async (input, actorId) => ({
+    ipcMain.handle("qualifications-create", managerAction(async (input, actorId) => ({
         qualification: await repository.create(input, actorId)
     })));
 
-    ipcMain.handle("qualifications-update", adminAction(async (input, actorId) => ({
+    ipcMain.handle("qualifications-update", managerAction(async (input, actorId) => ({
         qualification: await repository.update(input, actorId)
     })));
 
-    ipcMain.handle("qualifications-delete", adminAction(async (id, actorId) => {
+    ipcMain.handle("qualifications-delete", managerAction(async (id, actorId) => {
         await repository.remove(id, actorId);
         return {};
     }));
 
-    ipcMain.handle("qualifications-assign-user", adminAction(async (input, actorId) => ({
+    ipcMain.handle("qualifications-assign-user", managerAction(async (input, actorId) => ({
         assignment: await repository.assign(input, actorId)
     })));
 
-    ipcMain.handle("qualifications-update-assignment", adminAction(async (input, actorId) => ({
+    ipcMain.handle("qualifications-update-assignment", managerAction(async (input, actorId) => ({
         assignment: await repository.updateAssignment(input, actorId)
     })));
 
-    ipcMain.handle("qualifications-unassign-user", adminAction(async (input, actorId) => ({
+    ipcMain.handle("qualifications-unassign-user", managerAction(async (input, actorId) => ({
         assignment: await repository.unassign(input, actorId)
     })));
 }
 
-module.exports = { registerQualificationHandlers };
+module.exports = { registerQualificationHandlers, QUALIFICATION_MANAGER_ROLES };

@@ -16,7 +16,10 @@ async function main() {
         "Pilot",
         "Communications_Specialist",
         "Maintenance",
-        "Read_Only"
+        "Read_Only",
+        // Added 2026-11-19 (owner, question 20): they also manage qualifications.
+        "Maintenance_Manager",
+        "Quality_Control"
     ];
 
     for (const role of roles) {
