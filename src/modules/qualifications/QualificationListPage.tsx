@@ -61,6 +61,9 @@ export default function QualificationListPage(props: Props) {
     const [newAssignment, setNewAssignment] = useState<{ userId: string } & DateDraft>({ userId: "", awardedDate: "", expirationDate: "" });
     const [editingAssignment, setEditingAssignment] = useState<string | null>(null);
     const [dateDraft, setDateDraft] = useState<DateDraft>({ awardedDate: "", expirationDate: "" });
+    // Remove asks for a reason in the row itself: Electron does not support the browser prompt dialog.
+    const [removingAssignment, setRemovingAssignment] = useState<string | null>(null);
+    const [removeReason, setRemoveReason] = useState("");
 
     async function load() {
         try {
@@ -149,6 +152,7 @@ export default function QualificationListPage(props: Props) {
     }
 
     function startDateEdit(assignment: Assignment) {
+        setRemovingAssignment(null);
         setEditingAssignment(assignment.id);
         setDateDraft({ awardedDate: dateInputValue(assignment.awardedDate), expirationDate: dateInputValue(assignment.expirationDate) });
     }
@@ -172,11 +176,17 @@ export default function QualificationListPage(props: Props) {
         await refreshSelected(selected.id);
     }
 
-    async function unassign(assignment: Assignment) {
+    function startRemove(assignment: Assignment) {
+        setEditingAssignment(null);
+        setRemovingAssignment(assignment.id);
+        setRemoveReason("");
+    }
+
+    async function confirmRemove(assignment: Assignment) {
         if (!selected) return;
-        const reason = window.prompt(`Remove ${selected.name} from ${assignment.user.username}? Reason (optional):`, "");
-        if (reason === null) return;
-        await run(() => service.unassignUser(selected.id, assignment.user.id, reason || undefined), "Unable to remove user.");
+        const reason = removeReason.trim();
+        const ok = await run(() => service.unassignUser(selected.id, assignment.user.id, reason || undefined), "Unable to remove user.");
+        if (ok) setRemovingAssignment(null);
         await refreshSelected(selected.id);
     }
 
@@ -230,7 +240,18 @@ export default function QualificationListPage(props: Props) {
                 {active.length === 0 ? <p>Nobody is assigned.</p> : (
                     <table border={1} cellPadding={8}>
                         <thead><tr><th>User</th><th>Status</th><th>Awarded</th><th>Expires</th><th>Actions</th></tr></thead>
-                        <tbody>{active.map(a => editingAssignment === a.id ? (
+                        <tbody>{active.map(a => removingAssignment === a.id ? (
+                            <tr key={a.id}>
+                                <td>{a.user.username}</td>
+                                <td><QualificationStatusBadge status={a.qualificationStatus} /></td>
+                                <td colSpan={2}>
+                                    <label>Reason for removing (optional)<br />
+                                        <input autoFocus value={removeReason} placeholder="Removed by administrator" onChange={e => setRemoveReason(e.target.value)} style={{ width: "100%" }} />
+                                    </label>
+                                </td>
+                                <td><button onClick={() => void confirmRemove(a)}>Confirm Remove</button> <button onClick={() => setRemovingAssignment(null)}>Cancel</button></td>
+                            </tr>
+                        ) : editingAssignment === a.id ? (
                             <tr key={a.id}>
                                 <td>{a.user.username}</td>
                                 <td><QualificationStatusBadge status={a.qualificationStatus} /></td>
@@ -247,7 +268,7 @@ export default function QualificationListPage(props: Props) {
                                 <td>
                                     <button onClick={() => startDateEdit(a)}>Edit Dates</button>{" "}
                                     <button onClick={() => void setSuspended(a, !a.suspended)}>{a.suspended ? "Reinstate" : "Suspend"}</button>{" "}
-                                    <button onClick={() => void unassign(a)}>Remove</button>
+                                    <button onClick={() => startRemove(a)}>Remove</button>
                                 </td>
                             </tr>
                         ))}</tbody>
