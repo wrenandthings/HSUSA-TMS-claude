@@ -104,7 +104,7 @@ export default function SubjectDetailPage(props: Props) {
             <p><strong>Created:</strong> {String(subject.createdAt)}</p>
             <p><strong>Updated:</strong> {String(subject.updatedAt)}</p>
             <button onClick={() => { setMessage(""); setEditing(true); }}>Edit Subject</button>
-            <button
+            <button className="danger"
                 onClick={async () => {
                     if (await askToConfirm("Delete this subject?")) void deleteSubject();
                 }}

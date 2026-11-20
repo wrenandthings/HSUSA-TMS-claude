@@ -22,7 +22,7 @@ export default function EditQuestionForm(props: Props) {
             <label>Category<br /><input value={category} onChange={event => setCategory(event.target.value)} /></label><br /><br />
             <label>Difficulty<br /><input value={difficulty} onChange={event => setDifficulty(event.target.value)} /></label><br /><br />
             <label>Answer<br /><textarea value={answer} onChange={event => setAnswer(event.target.value)} rows={4} /></label><br /><br />
-            <button disabled={!questionText.trim()} onClick={() => props.onUpdate(questionText.trim(), category.trim(), difficulty.trim(), answer.trim())}>Update Question</button>
+            <button className="primary" disabled={!questionText.trim()} onClick={() => props.onUpdate(questionText.trim(), category.trim(), difficulty.trim(), answer.trim())}>Update Question</button>
             <button onClick={props.onCancel} style={{ marginLeft: "10px" }}>Cancel</button>
         </div>
     );

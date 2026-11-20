@@ -201,13 +201,10 @@ export default function QuestionListPage(props: Props) {
 
     return (
         <div style={{ padding: "40px" }}>
-            <button onClick={props.onBack} style={{ marginBottom: "20px" }}>
-                ← Back To Main Menu
-            </button>
 
             <h1>Question Bank</h1>
 
-            <button onClick={() => setCreating(true)}>+ Create New Question</button>
+            <button className="primary" onClick={() => setCreating(true)}>+ Create New Question</button>
             <button onClick={exportCsv} style={{ marginLeft: "10px" }}>
                 Export CSV
             </button>
@@ -264,7 +261,7 @@ export default function QuestionListPage(props: Props) {
                             {bankPreview.errors.length > 50 && <li>…and {bankPreview.errors.length - 50} more.</li>}
                         </ul>
                     )}
-                    <button disabled={!bankPreview.success || importing} onClick={importBank}>
+                    <button className="primary" disabled={!bankPreview.success || importing} onClick={importBank}>
                         {importing ? "Importing..." : "Confirm Import"}
                     </button>
                     <button onClick={clearBankImport} style={{ marginLeft: "10px" }}>Cancel</button>
@@ -279,7 +276,7 @@ export default function QuestionListPage(props: Props) {
                             {csvErrors.map((error) => <li key={error}>{error}</li>)}
                         </ul>
                     )}
-                    <button
+                    <button className="primary"
                         disabled={csvErrors.length > 0 || importing}
                         onClick={importCsv}
                     >

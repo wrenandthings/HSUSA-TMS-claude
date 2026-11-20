@@ -44,7 +44,7 @@ export default function CreateUserForm(props: Props) {
                 </select>
             </label><br /><br />
             {error && <p style={{ color: "darkred" }}>{error}</p>}
-            <button onClick={() => void create()}>Create User</button>
+            <button className="primary" onClick={() => void create()}>Create User</button>
             <button onClick={props.onCancel} style={{ marginLeft: "10px" }}>Cancel</button>
         </div>
     );

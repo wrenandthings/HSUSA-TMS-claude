@@ -49,7 +49,7 @@ export default function CreateSubjectForm(props: Props) {
                 </label>
             </div>
             <br />
-            <button disabled={saving} onClick={save}>{saving ? "Saving..." : "Save Subject"}</button>
+            <button className="primary" disabled={saving} onClick={save}>{saving ? "Saving..." : "Save Subject"}</button>
             <button disabled={saving} onClick={() => props.onCancel()} style={{ marginLeft: "10px" }}>Cancel</button>
         </div>
     );

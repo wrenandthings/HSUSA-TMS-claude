@@ -128,7 +128,7 @@ export default function RoleDetailPage(props: Props) {
             <button onClick={() => setEditing(true)}>
                 Edit Role
             </button>
-            <button onClick={confirmDeleteRole} style={{ marginLeft: "10px" }}>
+            <button className="danger" onClick={confirmDeleteRole} style={{ marginLeft: "10px" }}>
                 Delete Role
             </button>
 

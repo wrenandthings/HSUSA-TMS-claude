@@ -143,7 +143,7 @@ export default function QuestionDetailPage(
                 Edit Question
             </button>
 
-            <button
+            <button className="danger"
                 onClick={confirmDeleteQuestion}
                 style={{ marginLeft: "10px" }}
             >

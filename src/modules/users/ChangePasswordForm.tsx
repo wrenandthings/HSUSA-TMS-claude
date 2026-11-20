@@ -55,7 +55,7 @@ export default function ChangePasswordForm(props: Props) {
             <small>{PASSWORD_RULES_TEXT}</small><br /><br />
             <label>Confirm Password<br /><input type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} /></label><br /><br />
             {error && <p style={{ color: "darkred" }}>{error}</p>}
-            <button onClick={() => void submit()} disabled={saving}>Save Password</button>
+            <button className="primary" onClick={() => void submit()} disabled={saving}>Save Password</button>
             {props.onCancel && <button onClick={props.onCancel} style={{ marginLeft: "10px" }}>{props.cancelLabel ?? "Cancel"}</button>}
         </div>
     );

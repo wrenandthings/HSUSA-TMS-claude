@@ -220,7 +220,7 @@ export default function QualificationListPage(props: Props) {
             <label>Renewal (months)<br /><input type="number" min={1} value={form.renewalMonths} placeholder="Leave empty if it does not expire" onChange={e => setForm({ ...form, renewalMonths: e.target.value })} /></label><br />
             <small>Used to work out a person's expiration date from the date it was awarded.</small><br /><br />
             <label><input type="checkbox" checked={form.active} onChange={e => setForm({ ...form, active: e.target.checked })} /> Active</label><br /><br />
-            <button onClick={() => void save()}>Save Qualification</button>
+            <button className="primary" onClick={() => void save()}>Save Qualification</button>
         </div>
     );
 
@@ -244,7 +244,7 @@ export default function QualificationListPage(props: Props) {
                 </select>{" "}
                 <label>Awarded <input type="date" value={newAssignment.awardedDate} onChange={e => setNewAssignment({ ...newAssignment, awardedDate: e.target.value })} /></label>{" "}
                 <label>Expires <input type="date" value={newAssignment.expirationDate} onChange={e => setNewAssignment({ ...newAssignment, expirationDate: e.target.value })} /></label>{" "}
-                <button disabled={!newAssignment.userId} onClick={() => void assign()}>Assign</button><br />
+                <button className="primary" disabled={!newAssignment.userId} onClick={() => void assign()}>Assign</button><br />
                 <small>{selected.renewalMonths ? `Leave Expires empty to use the awarded date plus ${selected.renewalMonths} months.` : "This qualification does not expire unless you set a date."}</small>
 
                 <h2>Assigned People</h2>
@@ -260,7 +260,7 @@ export default function QualificationListPage(props: Props) {
                                         <input autoFocus value={removeReason} placeholder="Optional, for the history" onChange={e => setRemoveReason(e.target.value)} style={{ width: "100%" }} />
                                     </label>
                                 </td>
-                                <td><button onClick={() => void confirmRemove(a)}>Confirm Remove</button> <button onClick={() => setRemovingAssignment(null)}>Cancel</button></td>
+                                <td><button className="danger" onClick={() => void confirmRemove(a)}>Confirm Remove</button> <button onClick={() => setRemovingAssignment(null)}>Cancel</button></td>
                             </tr>
                         ) : editingAssignment === a.id ? (
                             <tr key={a.id}>
@@ -268,7 +268,7 @@ export default function QualificationListPage(props: Props) {
                                 <td><QualificationStatusBadge status={a.qualificationStatus} /></td>
                                 <td><input type="date" value={dateDraft.awardedDate} onChange={e => setDateDraft({ ...dateDraft, awardedDate: e.target.value })} /></td>
                                 <td><input type="date" value={dateDraft.expirationDate} onChange={e => setDateDraft({ ...dateDraft, expirationDate: e.target.value })} /></td>
-                                <td><button onClick={() => void saveDates(a)}>Save</button> <button onClick={() => setEditingAssignment(null)}>Cancel</button></td>
+                                <td><button className="primary" onClick={() => void saveDates(a)}>Save</button> <button onClick={() => setEditingAssignment(null)}>Cancel</button></td>
                             </tr>
                         ) : (
                             <tr key={a.id}>
@@ -300,9 +300,8 @@ export default function QualificationListPage(props: Props) {
 
     return (
         <div style={{ padding: "40px" }}>
-            <button onClick={props.onBack}>← Back To Main Menu</button>
             <h1>Qualifications</h1>
-            <button onClick={startCreate}>+ Add Qualification</button>
+            <button className="primary" onClick={startCreate}>+ Add Qualification</button>
             {" "}<label><input type="checkbox" checked={showHidden} onChange={e => setShowHidden(e.target.checked)} /> Show hidden</label>
             {message && <p>{message}</p>}
             <table border={1} cellPadding={10} style={{ marginTop: 20 }}>

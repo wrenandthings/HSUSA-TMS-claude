@@ -34,7 +34,7 @@ function ConfirmBox(props: { message: string; confirmLabel: string; onAnswer: (a
         <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
             <div style={{ background: "white", padding: "20px", maxWidth: "460px", border: "1px solid #888" }}>
                 <p style={{ marginTop: 0 }}>{props.message}</p>
-                <button ref={okRef} onClick={() => props.onAnswer(true)}>{props.confirmLabel}</button>
+                <button ref={okRef} className="primary" onClick={() => props.onAnswer(true)}>{props.confirmLabel}</button>
                 <button onClick={() => props.onAnswer(false)} style={{ marginLeft: "10px" }}>Cancel</button>
             </div>
         </div>

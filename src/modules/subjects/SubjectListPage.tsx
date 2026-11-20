@@ -77,18 +77,11 @@ export default function SubjectListPage(
 
         <div style={{ padding: "40px" }}>
 
-            <button
-                onClick={props.onBack}
-                style={{ marginBottom: "20px" }}
-            >
-                ← Back To Main Menu
-            </button>
-
             <h1>
                 Subject List
             </h1>
 
-            <button
+            <button className="primary"
                 onClick={() =>
                     setCreating(true)
                 }

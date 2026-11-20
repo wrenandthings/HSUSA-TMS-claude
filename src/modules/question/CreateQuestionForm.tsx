@@ -23,7 +23,7 @@ export default function CreateQuestionForm(props: Props) {
             <label>Category<br /><input value={category} onChange={event => setCategory(event.target.value)} /></label><br /><br />
             <label>Difficulty<br /><input value={difficulty} onChange={event => setDifficulty(event.target.value)} /></label><br /><br />
             <label>Answer<br /><textarea value={answer} onChange={event => setAnswer(event.target.value)} rows={4} /></label><br /><br />
-            <button onClick={submit} disabled={!questionText.trim()}>Save Question</button>
+            <button className="primary" onClick={submit} disabled={!questionText.trim()}>Save Question</button>
             <button onClick={props.onCancel} style={{ marginLeft: "10px" }}>Cancel</button>
         </div>
     );

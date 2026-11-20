@@ -37,9 +37,8 @@ export default function UserListPage(props: Props) {
 
     return (
         <div style={{ padding: "40px" }}>
-            <button onClick={props.onBack} style={{ marginBottom: "20px" }}>← Back To Main Menu</button>
             <h1>User List</h1>
-            <button onClick={() => setCreating(true)}>+ Add User</button>
+            <button className="primary" onClick={() => setCreating(true)}>+ Add User</button>
             {message && <p>{message}</p>}
             <table border={1} cellPadding={10} style={{ marginTop: "20px" }}>
                 <thead><tr><th>Username</th><th>First Name</th><th>Last Name</th><th>Email</th><th>Status</th></tr></thead>

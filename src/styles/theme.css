@@ -1,0 +1,237 @@
+/*
+ * HSUSA TMS theme, from the HeliService USA palette (heliservice-usa.com).
+ * Approved design: "HSUSA TMS – Visual Design" canvas, 2026-11-20.
+ * Element styles here restyle every screen; classes below are for the shell.
+ */
+:root {
+    --navy: #1A2741;
+    --navy-raised: #26365A;
+    --navy-line: #2E3D5C;
+    --blue: #216DA9;
+    --blue-dark: #1B5A8C;
+    --blue-tint: #E8F1F9;
+    --red: #D23641;
+    --red-dark: #A51F2B;
+    --red-tint: #FBE7E9;
+    --green-dark: #1C6B3E;
+    --green-tint: #E3F2EA;
+    --amber-dark: #7A4B00;
+    --amber-tint: #FFF1D6;
+    --off-white: #FCFCFC;
+    --page: #F3F5F8;
+    --surface: #FFFFFF;
+    --line: #E1E6EE;
+    --line-soft: #EEF1F5;
+    --field-line: #C4CCD9;
+    --slate: #5A6478;
+    --slate-dark: #3D475A;
+    --sidebar-text: #C9D2E3;
+    --font: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-display: "Inter Tight", "Inter", "Segoe UI", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--navy);
+    background: var(--page);
+}
+
+h1 {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0 0 16px;
+}
+
+h2 { font-size: 20px; font-weight: 700; margin: 24px 0 12px; }
+h3 { font-size: 16px; font-weight: 700; margin: 20px 0 8px; }
+
+a { color: var(--blue); }
+a:hover { color: var(--navy); }
+
+/* Buttons: neutral by default; .primary for the main action, .danger to remove. */
+button {
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 8px;
+    border: 1px solid var(--field-line);
+    background: var(--surface);
+    color: var(--navy);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 2px;
+}
+button:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.primary { background: var(--blue); border-color: var(--blue); color: #FFFFFF; }
+button.primary:hover:not(:disabled) { background: var(--blue-dark); border-color: var(--blue-dark); color: #FFFFFF; }
+button.danger { background: var(--red); border-color: var(--red); color: #FFFFFF; }
+button.danger:hover:not(:disabled) { background: var(--red-dark); border-color: var(--red-dark); color: #FFFFFF; }
+
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+input, select, textarea {
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--field-line);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--navy);
+    font: inherit;
+    font-size: 15px;
+}
+textarea { padding: 8px 12px; }
+input[type="checkbox"], input[type="radio"] {
+    min-height: 0;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    accent-color: var(--blue);
+    vertical-align: middle;
+}
+input[type="file"] { border: none; background: transparent; padding: 0; }
+
+label { font-weight: 500; }
+
+/* Tables keep their old border/cellPadding attributes; these rules win. */
+table {
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    font-size: 14px;
+}
+th {
+    background: #F8F9FB;
+    color: var(--slate);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+}
+th, td {
+    border: none;
+    border-bottom: 1px solid var(--line-soft);
+    padding: 12px 14px;
+    vertical-align: middle;
+}
+
+/* App shell: sidebar + content. Stacks on a narrow window. */
+.app-shell { display: flex; flex-wrap: wrap; min-height: 100vh; }
+
+.sidebar {
+    flex: 1 1 248px;
+    max-width: 100%;
+    background: var(--navy);
+    color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding: 28px 20px;
+}
+.brand { display: flex; flex-direction: column; gap: 4px; padding: 0 8px; }
+.brand-name { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: 0.02em; }
+.brand-name span { font-weight: 600; color: #8FB8DE; }
+.brand-sub { font-size: 12px; color: #B9C3D6; letter-spacing: 0.04em; text-transform: uppercase; }
+.brand-stripe { display: flex; gap: 4px; margin-top: 10px; }
+.brand-stripe span { height: 3px; width: 28px; background: var(--blue); }
+.brand-stripe span:first-child { background: var(--red); }
+
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav button {
+    display: block;
+    width: 100%;
+    margin: 0;
+    min-height: 44px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--sidebar-text);
+    font-size: 15px;
+    font-weight: 500;
+    text-align: left;
+}
+.nav button:hover:not(:disabled) { background: var(--navy-raised); color: #FFFFFF; }
+.nav button[aria-current="page"] {
+    background: var(--navy-raised);
+    color: #FFFFFF;
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--red);
+}
+
+.account { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px 8px 0; border-top: 1px solid var(--navy-line); }
+.avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex: none;
+    background: var(--blue); color: #FFFFFF;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 14px; text-transform: uppercase;
+}
+.account-name { font-size: 14px; font-weight: 600; }
+.account button.link {
+    min-height: 0; margin: 0; padding: 0; border: none; background: none;
+    color: #B9C3D6; font-size: 13px; font-weight: 500;
+}
+.account button.link:hover:not(:disabled) { color: #FFFFFF; text-decoration: underline; }
+
+.content { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; }
+.stripe { display: flex; }
+.stripe span { height: 4px; flex: 3; background: var(--blue); }
+.stripe span:first-child { flex: 1; background: var(--red); }
+
+/* Home page */
+.home { padding: 40px; display: flex; flex-direction: column; gap: 24px; }
+.home-sub { color: var(--slate); font-size: 14px; margin-top: -10px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.card {
+    margin: 0;
+    min-height: 0;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: 400;
+}
+.card:hover:not(:disabled) { border-color: var(--blue); color: var(--navy); box-shadow: 0 2px 10px rgba(26, 39, 65, 0.08); }
+.card strong { font-size: 17px; }
+.card span { color: var(--slate); font-size: 14px; line-height: 1.45; }
+
+/* Sign-in */
+.signin { display: flex; flex-wrap: wrap; min-height: 100vh; background: var(--off-white); }
+.signin-brand {
+    flex: 1 1 420px;
+    min-height: 320px;
+    background: var(--navy);
+    color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 48px;
+    padding: 56px 64px;
+}
+.signin-brand h1 { color: #FFFFFF; font-size: 44px; line-height: 1.1; margin: 0; max-width: 520px; }
+.signin-brand p { margin: 0; font-size: 18px; line-height: 1.55; color: var(--sidebar-text); max-width: 520px; }
+.signin-stripe { display: flex; gap: 6px; }
+.signin-stripe span { height: 4px; width: 112px; background: var(--blue); }
+.signin-stripe span:first-child { width: 56px; background: var(--red); }
+.signin-foot { font-size: 13px; color: #8E9AB3; }
+.signin-main { flex: 1 1 480px; display: flex; align-items: center; justify-content: center; padding: 56px 32px; }
+.signin-form { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 20px; }
+.signin-form h2 { font-family: var(--font-display); font-size: 30px; margin: 0; }
+.signin-form .hint { margin: 0; font-size: 14px; color: var(--slate); line-height: 1.5; }
+.field { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600; }
+.field input { min-height: 48px; font-size: 16px; font-weight: 400; }
+.signin-form button.primary { min-height: 50px; font-size: 16px; margin: 0; }
+.signin-error { color: var(--red-dark); font-weight: 600; font-size: 14px; }

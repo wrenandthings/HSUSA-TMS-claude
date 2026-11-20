@@ -257,7 +257,7 @@ export default function UserDetailPage(props: Props) {
                     )}
                 </div>
 
-                <button onClick={() => void saveQualifications()} disabled={savingQualifications}>
+                <button className="primary" onClick={() => void saveQualifications()} disabled={savingQualifications}>
                     {savingQualifications ? "Updating..." : "Update Qualifications"}
                 </button>
                 <button onClick={() => setEditingQualifications(false)} style={{ marginLeft: "10px" }}>
@@ -306,7 +306,7 @@ export default function UserDetailPage(props: Props) {
                             <option key={role.id} value={role.id}>{role.roleName.replace(/_/g, " ")}</option>
                         ))}
                 </select>{" "}
-                <button disabled={!roleToAdd || changingRoles} onClick={() => void addRole()}>Add Role</button>
+                <button className="primary" disabled={!roleToAdd || changingRoles} onClick={() => void addRole()}>Add Role</button>
             </div>
 
             <h2>Assigned Qualifications</h2>

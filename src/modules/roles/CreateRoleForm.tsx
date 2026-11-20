@@ -27,7 +27,7 @@ export default function CreateRoleForm(props: Props) {
                 <textarea value={description} onChange={event => setDescription(event.target.value)} rows={4} />
             </label>
             <br /><br />
-            <button onClick={submit} disabled={!roleName.trim()}>Save Role</button>
+            <button className="primary" onClick={submit} disabled={!roleName.trim()}>Save Role</button>
             <button onClick={props.onCancel} style={{ marginLeft: "10px" }}>Cancel</button>
         </div>
     );

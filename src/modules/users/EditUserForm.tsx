@@ -37,7 +37,7 @@ export default function EditUserForm(props: Props) {
                     <option value="LOCKED">Locked</option>
                 </select>
             </label><br /><br />
-            <button onClick={() => props.onUpdate(username, firstName, lastName, email, status)}>Save User</button>
+            <button className="primary" onClick={() => props.onUpdate(username, firstName, lastName, email, status)}>Save User</button>
             <button onClick={props.onCancel} style={{ marginLeft: "10px" }}>Cancel</button>
         </div>
     );

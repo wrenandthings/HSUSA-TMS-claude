@@ -32,7 +32,7 @@ export default function EditSubjectForm(props: Props) {
                 <textarea value={description} onChange={e => setDescription(e.target.value)} />
             </label>
             <br /><br />
-            <button disabled={props.saving} onClick={() => props.onUpdate(code, subjectName, description)}>
+            <button className="primary" disabled={props.saving} onClick={() => props.onUpdate(code, subjectName, description)}>
                 {props.saving ? "Saving..." : "Update Subject"}
             </button>
             <button disabled={props.saving} onClick={props.onCancel} style={{ marginLeft: "10px" }}>

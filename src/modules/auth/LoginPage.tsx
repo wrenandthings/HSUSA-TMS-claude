@@ -70,11 +70,22 @@ export default function LoginPage(props: Props) {
     }
 
     return (
-        <div style={{ padding: "40px" }}>
-            <h1>HSUSA TMS</h1>
-            <h2>Login</h2>
-            <LoginForm onLogin={login} />
-            {message && <div style={{ marginTop: 12 }}>{message}</div>}
+        <div className="signin">
+            <section className="signin-brand" aria-label="About">
+                <div className="brand">
+                    <div className="brand-name">HSUSA <span>TMS</span></div>
+                    <div className="brand-sub">Training Management System</div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                    <div className="signin-stripe" aria-hidden="true"><span></span><span></span></div>
+                    <h1>Every crew member current. Every record ready.</h1>
+                    <p>Qualifications, recurrent training and knowledge checks for offshore, HEMS and maintenance crews, in one place.</p>
+                </div>
+                <div className="signin-foot">HeliService USA · North Kingstown, Rhode Island</div>
+            </section>
+            <main className="signin-main">
+                <LoginForm onLogin={login} message={message} />
+            </main>
         </div>
     );
 }
