@@ -41,7 +41,7 @@ beforeAll(() => {
             ('q4','crm',NULL,'CURRENT',NULL,NULL,CURRENT_TIMESTAMP);
         INSERT INTO "UserQualification" ("id","userId","qualificationId","status","revokedAt","endReason") VALUES
             ('a1','u1','q1','ACTIVE',NULL,NULL),
-            ('a2','u2','q1','REVOKED','2026-10-01 00:00:00','Removed by administrator'),
+            ('a2','u2','q1','REVOKED','2026-10-01 00:00:00','Removed (no reason given)'),
             ('a3','u1','q2','ACTIVE',NULL,NULL),
             ('a4','u2','q3','ACTIVE',NULL,NULL);
     `);
@@ -85,7 +85,7 @@ describe("per-person qualification dates migration", () => {
 
     it("keeps revoked history unchanged", async () => {
         const a2 = await prisma.userQualification.findUniqueOrThrow({ where: { id: "a2" } });
-        expect([a2.status, a2.endReason, a2.revokedAt?.toISOString()]).toEqual(["REVOKED", "Removed by administrator", "2026-10-01T00:00:00.000Z"]);
+        expect([a2.status, a2.endReason, a2.revokedAt?.toISOString()]).toEqual(["REVOKED", "Removed (no reason given)", "2026-10-01T00:00:00.000Z"]);
         expect(await prisma.userQualification.count()).toBe(4);
     });
 });

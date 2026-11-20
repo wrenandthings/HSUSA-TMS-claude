@@ -113,7 +113,7 @@ export default function UserDetailPage(props: Props) {
     }
 
     async function removeRole(role: any) {
-        if (!(await askToConfirm(`Remove the ${role.roleName} role from ${user.username}?`))) return;
+        if (!(await askToConfirm(`Remove the ${role.roleName.replace(/_/g, " ")} role from ${user.username}?`))) return;
         setChangingRoles(true);
         try {
             const result = await userService.removeRole(props.userId, role.id);

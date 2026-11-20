@@ -175,7 +175,7 @@ function createQualificationRepository(prisma, options = {}) {
             if (!active) return null;
             const updated = await prisma.userQualification.update({
                 where: { id: active.id },
-                data: { status: "REVOKED", revokedAt: now(), endReason: input.reason || "Removed by administrator" }
+                data: { status: "REVOKED", revokedAt: now(), endReason: input.reason || "Removed (no reason given)" }
             });
             await audit(actorId, "QUALIFICATION_UNASSIGNED", input.qualificationId, active, updated);
             return withStatus(updated, now());

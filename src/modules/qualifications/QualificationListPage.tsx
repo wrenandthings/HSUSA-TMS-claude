@@ -257,7 +257,7 @@ export default function QualificationListPage(props: Props) {
                                 <td><QualificationStatusBadge status={a.qualificationStatus} /></td>
                                 <td colSpan={2}>
                                     <label>Reason for removing (optional)<br />
-                                        <input autoFocus value={removeReason} placeholder="Removed by administrator" onChange={e => setRemoveReason(e.target.value)} style={{ width: "100%" }} />
+                                        <input autoFocus value={removeReason} placeholder="Optional, for the history" onChange={e => setRemoveReason(e.target.value)} style={{ width: "100%" }} />
                                     </label>
                                 </td>
                                 <td><button onClick={() => void confirmRemove(a)}>Confirm Remove</button> <button onClick={() => setRemovingAssignment(null)}>Cancel</button></td>
