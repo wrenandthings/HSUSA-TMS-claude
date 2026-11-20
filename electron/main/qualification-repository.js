@@ -82,9 +82,23 @@ function createQualificationRepository(prisma, options = {}) {
     }
 
     return {
-        async list() {
-            const records = await prisma.qualification.findMany({ include, orderBy: { name: "asc" } });
+        // Hidden qualifications (created in error) are left out unless asked for.
+        async list(options = {}) {
+            const records = await prisma.qualification.findMany({
+                where: options.includeHidden ? undefined : { hidden: false },
+                include,
+                orderBy: { name: "asc" }
+            });
             return records.map(serialize);
+        },
+
+        // Spec section 3 and owner question 24: an administrator can hide a
+        // qualification created in error. Nothing is deleted; it can be unhidden.
+        async setHidden(id, hidden, actorId) {
+            const before = await prisma.qualification.findUniqueOrThrow({ where: { id } });
+            const updated = await prisma.qualification.update({ where: { id }, data: { hidden: Boolean(hidden) }, include });
+            await audit(actorId, hidden ? "QUALIFICATION_HIDDEN" : "QUALIFICATION_UNHIDDEN", id, { hidden: before.hidden }, { hidden: Boolean(hidden) });
+            return serialize(updated);
         },
 
         async getById(id) {
@@ -112,7 +126,7 @@ function createQualificationRepository(prisma, options = {}) {
             const before = await prisma.qualification.findUniqueOrThrow({ where: { id } });
             const history = await prisma.userQualification.count({ where: { qualificationId: id } });
             if (history > 0) {
-                throw new Error("This qualification has assignment history and cannot be deleted. Mark it inactive instead.");
+                throw new Error("This qualification has assignment history and cannot be deleted. Mark it inactive instead, or an administrator can hide it.");
             }
             await prisma.qualification.delete({ where: { id } });
             await audit(actorId, "QUALIFICATION_DELETED", id, before, null);

@@ -27,11 +27,19 @@ async function requireQualificationManager() {
     return userId;
 }
 
+async function requireAdministrator() {
+    const userId = getCurrentUserId();
+    if (!userId) throw new Error("Authentication required");
+    const assignment = await prisma.userRole.findFirst({ where: { userId, role: { roleName: "Administrator" } } });
+    if (!assignment) throw new Error("Only an administrator can hide or unhide a qualification");
+    return userId;
+}
+
 // Runs a qualification-manager change and reports failures as { success: false, message }.
-function managerAction(work) {
+function managerAction(work, requirePermission = requireQualificationManager) {
     return async (event, input) => {
         try {
-            const actorId = await requireQualificationManager();
+            const actorId = await requirePermission();
             return { success: true, ...(await work(input, actorId)) };
         } catch (error) {
             if (error && error.code === "P2002") {
@@ -43,7 +51,7 @@ function managerAction(work) {
 }
 
 function registerQualificationHandlers() {
-    ipcMain.handle("qualifications-get-all", async () => repository.list());
+    ipcMain.handle("qualifications-get-all", async (event, options) => repository.list({ includeHidden: Boolean(options?.includeHidden) }));
 
     ipcMain.handle("qualifications-get-by-id", async (event, id) => repository.getById(id));
 
@@ -54,6 +62,10 @@ function registerQualificationHandlers() {
     ipcMain.handle("qualifications-update", managerAction(async (input, actorId) => ({
         qualification: await repository.update(input, actorId)
     })));
+
+    ipcMain.handle("qualifications-set-hidden", managerAction(async (input, actorId) => ({
+        qualification: await repository.setHidden(input.id, input.hidden, actorId)
+    }), requireAdministrator));
 
     ipcMain.handle("qualifications-delete", managerAction(async (id, actorId) => {
         await repository.remove(id, actorId);

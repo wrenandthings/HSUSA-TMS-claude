@@ -126,6 +126,9 @@ model Qualification {
   description   String?
   renewalMonths Int?
   active        Boolean             @default(true)
+  // Hidden by an administrator because it was created in error (owner
+  // decision 2026-11-19, question 24). History is kept; lists leave it out.
+  hidden        Boolean             @default(false)
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   assignments   UserQualification[]

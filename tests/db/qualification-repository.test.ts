@@ -60,6 +60,22 @@ describe("qualification catalog", () => {
     });
 });
 
+describe("hiding a qualification created in error", () => {
+    it("keeps it and its history, leaves it out of lists, and can be undone", async () => {
+        const q = await pic();
+        await repo.assign({ qualificationId: q.id, userId: pilotId }, adminId);
+        await repo.setHidden(q.id, true, adminId);
+        expect((await repo.list()).map(x => x.code)).not.toContain("PIC");
+        const hidden = (await repo.list({ includeHidden: true })).find(x => x.code === "PIC")!;
+        expect(hidden.hidden).toBe(true);
+        expect(hidden.assignments).toHaveLength(1);
+        await repo.setHidden(q.id, false, adminId);
+        expect((await repo.list()).map(x => x.code)).toContain("PIC");
+        const actions = (await db.prisma.auditLog.findMany()).map(e => e.action);
+        expect(actions).toEqual(expect.arrayContaining(["QUALIFICATION_HIDDEN", "QUALIFICATION_UNHIDDEN"]));
+    });
+});
+
 describe("per-person assignments", () => {
     it("works out the expiration from the awarded date and renewal months", async () => {
         const q = await pic();

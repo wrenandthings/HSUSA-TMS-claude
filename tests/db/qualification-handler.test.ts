@@ -33,7 +33,7 @@ describe("qualification IPC handlers", () => {
     it("register every channel the preload script uses", () => {
         expect([...handlers.keys()].sort()).toEqual([
             "qualifications-assign-user", "qualifications-create", "qualifications-delete", "qualifications-get-all",
-            "qualifications-get-by-id", "qualifications-unassign-user", "qualifications-update", "qualifications-update-assignment"
+            "qualifications-get-by-id", "qualifications-set-hidden", "qualifications-unassign-user", "qualifications-update", "qualifications-update-assignment"
         ]);
     });
 
@@ -68,6 +68,21 @@ describe("qualification IPC handlers", () => {
             if (result.success) allowed.push(roleName);
         }
         expect(allowed).toEqual(QUALIFICATION_MANAGER_ROLES);
+    });
+
+    it("let only an administrator hide a qualification, and leave it out of the list", async () => {
+        auth.setCurrentUser(adminId);
+        const q = (await call("qualifications-create", { code: "OOPS", name: "Created in error" })).qualification;
+        const tmRole = await db.prisma.role.findUniqueOrThrow({ where: { roleName: "Training_Manager" } });
+        const tm = await db.prisma.user.create({ data: { username: "tm-hide", passwordHash: "x", firstName: "T", lastName: "M", status: "ACTIVE", userRoles: { create: { roleId: tmRole.id } } } });
+        auth.setCurrentUser(tm.id);
+        expect(await call("qualifications-set-hidden", { id: q.id, hidden: true })).toEqual({ success: false, message: "Only an administrator can hide or unhide a qualification" });
+        auth.setCurrentUser(adminId);
+        expect((await call("qualifications-set-hidden", { id: q.id, hidden: true })).success).toBe(true);
+        const visible = (await call("qualifications-get-all")).map((x: any) => x.code);
+        const all = (await call("qualifications-get-all", { includeHidden: true })).map((x: any) => x.code);
+        expect(visible).not.toContain("OOPS");
+        expect(all).toContain("OOPS");
     });
 
     it("return validation problems as a message instead of throwing", async () => {

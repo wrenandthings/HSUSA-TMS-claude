@@ -31,6 +31,7 @@ export type Qualification = {
     description?: string | null;
     renewalMonths?: number | null;
     active: boolean;
+    hidden?: boolean;
     assignments: Assignment[];
 };
 
@@ -39,7 +40,8 @@ export type AssignmentUpdate = { assignmentId: string; awardedDate?: string | nu
 export type Result = { success: boolean; message?: string };
 
 export class QualificationService {
-    async getQualifications(): Promise<Qualification[]> { return window.hsusa.getQualifications(); }
+    async getQualifications(options?: { includeHidden?: boolean }): Promise<Qualification[]> { return window.hsusa.getQualifications(options); }
+    async setHidden(id: string, hidden: boolean): Promise<Result> { return window.hsusa.setQualificationHidden({ id, hidden }); }
     async getQualificationById(id: string): Promise<Qualification | null> { return window.hsusa.getQualificationById(id); }
     async createQualification(input: QualificationInput): Promise<Result> { return window.hsusa.createQualification(input); }
     async updateQualification(input: QualificationInput & { id: string }): Promise<Result> { return window.hsusa.updateQualification(input); }

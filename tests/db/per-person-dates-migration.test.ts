@@ -46,6 +46,10 @@ beforeAll(() => {
             ('a4','u2','q3','ACTIVE',NULL,NULL);
     `);
     execute(migrationSql(target));
+    // Apply every later migration too, so the current Prisma client matches
+    // the tables and the data is checked to survive them.
+    const after = readdirSync(migrationsDir).filter(n => /^\d+_/.test(n) && n > target).sort();
+    for (const name of after) execute(migrationSql(name));
     prisma = new PrismaClient({ datasources: { db: { url } } });
 });
 

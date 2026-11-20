@@ -58,6 +58,7 @@ export default function QualificationListPage(props: Props) {
     const [form, setForm] = useState<QualificationInput>(emptyForm());
     const [editing, setEditing] = useState(false);
     const [message, setMessage] = useState("");
+    const [showHidden, setShowHidden] = useState(false);
     const [newAssignment, setNewAssignment] = useState<{ userId: string } & DateDraft>({ userId: "", awardedDate: "", expirationDate: "" });
     const [editingAssignment, setEditingAssignment] = useState<string | null>(null);
     const [dateDraft, setDateDraft] = useState<DateDraft>({ awardedDate: "", expirationDate: "" });
@@ -67,14 +68,14 @@ export default function QualificationListPage(props: Props) {
 
     async function load() {
         try {
-            setItems(await service.getQualifications());
+            setItems(await service.getQualifications({ includeHidden: showHidden }));
             setUsers(await window.hsusa.getUsers());
         } catch (error) {
             setMessage(errorMessage(error));
         }
     }
 
-    useEffect(() => { void load(); }, []);
+    useEffect(() => { void load(); }, [showHidden]);
 
     async function refreshSelected(id: string) {
         await load();
@@ -190,6 +191,15 @@ export default function QualificationListPage(props: Props) {
         await refreshSelected(selected.id);
     }
 
+    async function setHidden(item: Qualification, hidden: boolean) {
+        const verb = hidden ? "Hide" : "Unhide";
+        const note = hidden ? " It will no longer appear in lists or on people's pages. Its history is kept, and you can unhide it." : "";
+        if (!window.confirm(`${verb} qualification "${item.name}"?${note}`)) return;
+        const ok = await run(() => service.setHidden(item.id, hidden), `Unable to ${verb.toLowerCase()} qualification.`);
+        if (ok) setMessage(hidden ? `"${item.name}" is hidden.` : `"${item.name}" is visible again.`);
+        await load();
+    }
+
     async function remove(item: Qualification) {
         if (!window.confirm(`Delete qualification "${item.name}"?`)) return;
         const ok = await run(() => service.deleteQualification(item.id), "Unable to delete qualification.");
@@ -292,16 +302,17 @@ export default function QualificationListPage(props: Props) {
             <button onClick={props.onBack}>← Back To Main Menu</button>
             <h1>Qualifications</h1>
             <button onClick={startCreate}>+ Add Qualification</button>
+            {" "}<label><input type="checkbox" checked={showHidden} onChange={e => setShowHidden(e.target.checked)} /> Show hidden</label>
             {message && <p>{message}</p>}
             <table border={1} cellPadding={10} style={{ marginTop: 20 }}>
                 <thead><tr><th>Code</th><th>Name</th><th>Renewal</th><th>Assigned</th><th>Needs attention</th><th>Actions</th></tr></thead>
-                <tbody>{items.map(item => <tr key={item.id} style={item.active ? undefined : { opacity: 0.6 }}>
+                <tbody>{items.map(item => <tr key={item.id} style={item.active && !item.hidden ? undefined : { opacity: 0.6 }}>
                     <td>{item.code}</td>
-                    <td><button onClick={() => void openDetails(item)}>{item.name}</button>{item.active ? "" : " (inactive)"}</td>
+                    <td><button onClick={() => void openDetails(item)}>{item.name}</button>{item.active ? "" : " (inactive)"}{item.hidden ? " (hidden)" : ""}</td>
                     <td>{renewalText(item)}</td>
                     <td>{activeAssignments(item).length}</td>
                     <td title={WARNING_STATUSES.map(s => statusDisplay(s).label).join(", ")}><WarningSummary item={item} /></td>
-                    <td><button onClick={() => startEdit(item)}>Edit</button> <button onClick={() => void remove(item)}>Delete</button></td>
+                    <td><button onClick={() => startEdit(item)}>Edit</button> <button onClick={() => void remove(item)}>Delete</button> <button onClick={() => void setHidden(item, !item.hidden)}>{item.hidden ? "Unhide" : "Hide"}</button></td>
                 </tr>)}</tbody>
             </table>
         </div>
