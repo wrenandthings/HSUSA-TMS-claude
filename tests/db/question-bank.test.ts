@@ -1,0 +1,81 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createTestDatabase, TestDatabase } from "./testDatabase";
+
+// Imports Quail's real banks through the real IPC handlers (with a stand-in
+// for Electron's ipcMain), and checks subject codes on the subject handler.
+const require = createRequire(import.meta.url);
+const handlers = new Map<string, (event: unknown, input?: unknown) => Promise<any>>();
+const banks = path.resolve(__dirname, "../../documents/question-banks");
+const maintCsv = readFileSync(path.join(banks, "Maint_question_bank.csv"), "utf8");
+let db: TestDatabase;
+let auth: { setCurrentUser: (id: string | null) => void };
+let adminId: string;
+let pilotId: string;
+
+beforeAll(async () => {
+    db = createTestDatabase();
+    process.env.DATABASE_URL = db.url;
+    const electronPath = require.resolve("electron");
+    require.cache[electronPath] = { id: electronPath, filename: electronPath, loaded: true, exports: { ipcMain: { handle: (channel: string, fn: any) => handlers.set(channel, fn) } } } as any;
+    const main = path.resolve(__dirname, "../../electron/main");
+    require(path.join(main, "question-handler.js")).registerQuestionHandlers();
+    require(path.join(main, "subject-handler.js")).registerSubjectHandlers();
+    auth = require(path.join(main, "auth-context.js"));
+    db.run("tsx", ["prisma/seed.ts"]);
+    adminId = (await db.prisma.user.findUniqueOrThrow({ where: { username: "admin" } })).id;
+    pilotId = (await db.prisma.user.create({ data: { username: "pilot", passwordHash: "x", firstName: "P", lastName: "Pilot", status: "ACTIVE" } })).id;
+});
+afterAll(async () => { await db.cleanup(); });
+
+const call = (channel: string, input?: unknown) => handlers.get(channel)!({}, input);
+
+describe("seeded subjects", () => {
+    it("are the eleven codes from the Seed Data Specification", async () => {
+        const codes = (await db.prisma.subject.findMany({ orderBy: { code: "asc" } })).map(s => s.code);
+        expect(codes).toEqual(["AW169", "COMM", "CRM", "HAA", "HAZMAT", "MAINT", "MGMT", "NVG", "OFFSHORE_IFR", "OMA", "PILOT"]);
+    });
+});
+
+describe("question-bank import", () => {
+    it("is refused for someone without Question Management", async () => {
+        auth.setCurrentUser(pilotId);
+        expect(await call("questions-import-bank", { csvText: maintCsv })).toMatchObject({ success: false, message: "You do not have permission to import questions" });
+        expect(await db.prisma.question.count()).toBe(0);
+    });
+
+    it("previews without writing, then imports, then updates on a second import", async () => {
+        auth.setCurrentUser(adminId);
+        expect(await call("questions-import-bank", { csvText: maintCsv, dryRun: true })).toMatchObject({ success: true, created: 704, updated: 0 });
+        expect(await db.prisma.question.count()).toBe(0);
+
+        expect(await call("questions-import-bank", { csvText: maintCsv })).toMatchObject({ success: true, created: 704, updated: 0 });
+        const first = await db.prisma.question.findUniqueOrThrow({ where: { externalId: "MAINT-001" }, include: { subject: true } });
+        expect(first).toMatchObject({ correctAnswer: "C", answerC: "Director of Maintenance", reference: "OM-A 1.4.6, p. 42", active: true });
+        expect(first.subject?.code).toBe("MAINT");
+
+        expect(await call("questions-import-bank", { csvText: maintCsv })).toMatchObject({ success: true, created: 0, updated: 704 });
+        expect(await db.prisma.question.count()).toBe(704);
+        expect(await db.prisma.auditLog.count({ where: { action: "QUESTIONS_IMPORTED" } })).toBe(2);
+    });
+
+    it("imports nothing when one row names an unknown subject", async () => {
+        const header = maintCsv.split("\n", 1)[0];
+        const csv = `${header}\nNEW-1,Fine,a,b,c,d,A,a,Ref,,MAINT,,,,Yes\nNEW-2,Bad subject,a,b,c,d,A,a,Ref,,ASTRONOMY,,,,Yes\n`;
+        const result = await call("questions-import-bank", { csvText: csv });
+        expect(result.success).toBe(false);
+        expect(result.errors).toEqual(['Row 3 (NEW-2): no subject has the code or name "ASTRONOMY".']);
+        expect(await db.prisma.question.findUnique({ where: { externalId: "NEW-1" } })).toBeNull();
+    });
+});
+
+describe("subject codes", () => {
+    it("are required, cleaned to upper case, and unique", async () => {
+        expect(await call("subjects-create", { code: "", subjectName: "Weather" })).toEqual({ success: false, message: "Subject code is required." });
+        expect(await call("subjects-create", { code: "maint", subjectName: "Other" })).toEqual({ success: false, message: "A subject with that code or name already exists." });
+        const made = await call("subjects-create", { code: "wx basics", subjectName: "Weather" });
+        expect(made.subject.code).toBe("WX_BASICS");
+    });
+});

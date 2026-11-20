@@ -39,35 +39,13 @@ export default function SubjectListPage(
         setSubjects(data);
     }
 
-    async function createSubject(
-        subjectName: string,
-        description: string
-    ) {
-
-        console.log(
-            "Creating subject:",
-            subjectName,
-            description
-        );
-
-        const result =
-            await subjectService.createSubject(
-                subjectName,
-                description
-            );
-
-        console.log(
-            "Create Subject Result:",
-            result
-        );
-
+    // Returns the problem to show on the form, or null when the subject was made.
+    async function createSubject(code: string, subjectName: string, description: string) {
+        const result = await subjectService.createSubject(code, subjectName, description);
+        if (!result?.success) return result?.message ?? "Unable to create subject.";
         await loadSubjects();
-
-        console.log(
-            "Subject list refreshed"
-        );
-
         setCreating(false);
+        return null;
     }
 
     if (creating) {
@@ -128,6 +106,7 @@ export default function SubjectListPage(
 
                 <thead>
                     <tr>
+                        <th>Code</th>
                         <th>Subject Name</th>
                         <th>Description</th>
                         <th>Actions</th>
@@ -140,6 +119,10 @@ export default function SubjectListPage(
                         (subject: any) => (
 
                             <tr key={subject.id}>
+
+                                <td>
+                                    {subject.code}
+                                </td>
 
                                 <td>
                                     {subject.subjectName}

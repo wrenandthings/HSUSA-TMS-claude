@@ -144,6 +144,7 @@ async function main() {
     }
 
     await seedQualifications();
+    await seedSubjects();
     await seedPermissions(adminRole);
 
     console.log("Seed Complete");
@@ -207,6 +208,32 @@ async function seedPermissions(adminRole: { id: string } | null) {
                 });
             }
         }
+    }
+}
+
+// Subject codes from the Seed Data Specification v1.0 (owner question 15:
+// subjects have a code and a name). Names are a first pass and can be edited
+// in the app. Skipped if the code or name already exists.
+const SUBJECTS = [
+    { code: "OMA", subjectName: "Operations Manual Part A" },
+    { code: "PILOT", subjectName: "Pilot" },
+    { code: "COMM", subjectName: "Communications" },
+    { code: "MGMT", subjectName: "Management" },
+    { code: "MAINT", subjectName: "Maintenance" },
+    { code: "CRM", subjectName: "Crew Resource Management" },
+    { code: "HAZMAT", subjectName: "Hazardous Materials" },
+    { code: "NVG", subjectName: "Night Vision Goggles" },
+    { code: "HAA", subjectName: "Helicopter Air Ambulance" },
+    { code: "OFFSHORE_IFR", subjectName: "Offshore IFR" },
+    { code: "AW169", subjectName: "AW169" }
+];
+
+async function seedSubjects() {
+    for (const subject of SUBJECTS) {
+        const existing = await prisma.subject.findFirst({
+            where: { OR: [{ code: subject.code }, { subjectName: subject.subjectName }] }
+        });
+        if (!existing) await prisma.subject.create({ data: subject });
     }
 }
 

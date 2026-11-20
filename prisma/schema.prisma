@@ -98,22 +98,44 @@ model Backup {
   user         User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
 }
 
+// A subject such as OM-A or Maintenance (owner question 15: code plus name).
+// subjectName is the display name.
 model Subject {
-  id          String   @id @default(uuid())
+  id          String     @id @default(uuid())
+  code        String     @unique
   subjectName String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  questions   Question[]
 }
 
+// One question-bank question. Imported banks use the format agreed with Quail
+// (commons/direct/finch-quail.md in wren-sandbox): externalId is the bank's
+// questionId, so re-importing updates instead of duplicating. answer holds
+// the older free-text answer of questions entered by hand.
 model Question {
-  id           String   @id @default(uuid())
-  questionText String
-  category     String?
-  difficulty   String?
-  answer       String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(uuid())
+  externalId     String?  @unique
+  questionText   String
+  answerA        String?
+  answerB        String?
+  answerC        String?
+  answerD        String?
+  correctAnswer  String?
+  reference      String?
+  category       String?
+  section        String?
+  difficulty     String?
+  sourceRevision String?
+  active         Boolean  @default(true)
+  answer         String?
+  subjectId      String?
+  subject        Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([subjectId])
 }
 
 // A catalog entry such as PIC or HUET. Dates belong to each person's

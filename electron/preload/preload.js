@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld("hsusa", {
     deleteQuestion: (questionId) => ipcRenderer.invoke("questions-delete", questionId),
     deleteQuestions: (questionIds) => ipcRenderer.invoke("questions-delete-many", questionIds),
     importQuestions: (questions) => ipcRenderer.invoke("questions-import", questions),
+    importQuestionBank: (input) => ipcRenderer.invoke("questions-import-bank", input),
     getQualifications: (options) => ipcRenderer.invoke("qualifications-get-all", options),
     setQualificationHidden: (input) => ipcRenderer.invoke("qualifications-set-hidden", input),
     getQualificationById: (id) => ipcRenderer.invoke("qualifications-get-by-id", id),

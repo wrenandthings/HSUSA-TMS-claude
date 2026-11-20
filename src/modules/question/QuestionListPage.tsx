@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { QuestionService } from "./QuestionService";
+import { QuestionService, QuestionBankImportResult } from "./QuestionService";
 import QuestionDetailPage from "./QuestionDetailPage";
 import CreateQuestionForm from "./CreateQuestionForm";
 import {
@@ -16,6 +16,21 @@ type SortField = "questionText" | "category" | "difficulty" | "answer";
 
 const questionService = new QuestionService();
 
+// Bank questions keep four options and the letter of the correct one; older
+// hand-entered questions keep a free-text answer.
+export function displayAnswer(question: any): string {
+    const letter = question.correctAnswer;
+    if (letter && question[`answer${letter}`]) return `${letter}. ${question[`answer${letter}`]}`;
+    return question.answer ?? "";
+}
+
+// A file is a question bank (the agreed 15-column format) when its header has
+// a questionId column.
+function isQuestionBankFile(text: string): boolean {
+    const header = text.replace(/^\uFEFF/, "").split(/\r?\n/, 1)[0].toLowerCase();
+    return header.split(",").some((name) => ["questionid", "externalid"].includes(name.trim().replace(/[\s_"-]/g, "")));
+}
+
 export default function QuestionListPage(props: Props) {
     const [questions, setQuestions] = useState<any[]>([]);
     const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
@@ -26,6 +41,9 @@ export default function QuestionListPage(props: Props) {
     const [csvRows, setCsvRows] = useState<QuestionCsvRow[]>([]);
     const [csvErrors, setCsvErrors] = useState<string[]>([]);
     const [importing, setImporting] = useState(false);
+    const [bankCsv, setBankCsv] = useState<string | null>(null);
+    const [bankPreview, setBankPreview] = useState<QuestionBankImportResult | null>(null);
+    const [bankMessage, setBankMessage] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -56,9 +74,43 @@ export default function QuestionListPage(props: Props) {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        const result = parseQuestionsCsv(await file.text());
+        const text = await file.text();
+        setBankMessage("");
+        if (isQuestionBankFile(text)) {
+            setCsvRows([]);
+            setCsvErrors([]);
+            setBankCsv(text);
+            setBankPreview(await questionService.importQuestionBank(text, true));
+            return;
+        }
+        setBankCsv(null);
+        setBankPreview(null);
+        const result = parseQuestionsCsv(text);
         setCsvRows(result.rows);
         setCsvErrors(result.errors);
+    }
+
+    function clearBankImport() {
+        setBankCsv(null);
+        setBankPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+
+    async function importBank() {
+        if (!bankCsv || !bankPreview?.success) return;
+        setImporting(true);
+        try {
+            const result = await questionService.importQuestionBank(bankCsv, false);
+            if (result.success) {
+                setBankMessage(result.message);
+                clearBankImport();
+                await loadQuestions();
+            } else {
+                setBankPreview(result);
+            }
+        } finally {
+            setImporting(false);
+        }
     }
 
     async function importCsv() {
@@ -199,6 +251,25 @@ export default function QuestionListPage(props: Props) {
                 />
             </div>
 
+            {bankMessage && <p style={{ color: "darkgreen" }}>{bankMessage}</p>}
+
+            {bankPreview && (
+                <div>
+                    <h2>Question Bank Import</h2>
+                    <p style={{ color: bankPreview.success ? "inherit" : "darkred" }}>{bankPreview.message}</p>
+                    {bankPreview.errors.length > 0 && (
+                        <ul style={{ color: "darkred" }}>
+                            {bankPreview.errors.slice(0, 50).map((error) => <li key={error}>{error}</li>)}
+                            {bankPreview.errors.length > 50 && <li>…and {bankPreview.errors.length - 50} more.</li>}
+                        </ul>
+                    )}
+                    <button disabled={!bankPreview.success || importing} onClick={importBank}>
+                        {importing ? "Importing..." : "Confirm Import"}
+                    </button>
+                    <button onClick={clearBankImport} style={{ marginLeft: "10px" }}>Cancel</button>
+                </div>
+            )}
+
             {csvRows.length > 0 && (
                 <div>
                     <h2>Import Preview ({csvRows.length} rows)</h2>
@@ -228,6 +299,7 @@ export default function QuestionListPage(props: Props) {
                             />
                         </th>
                         <th>Question</th>
+                        <th>Subject</th>
                         <th>Category</th>
                         <th>Difficulty</th>
                         <th>Answer</th>
@@ -246,9 +318,10 @@ export default function QuestionListPage(props: Props) {
                                 />
                             </td>
                             <td>{question.questionText}</td>
+                            <td>{question.subject?.code ?? ""}</td>
                             <td>{question.category}</td>
                             <td>{question.difficulty}</td>
-                            <td>{question.answer}</td>
+                            <td>{displayAnswer(question)}</td>
                             <td>
                                 <button onClick={() => setSelectedQuestion(question.id)}>
                                     View Details

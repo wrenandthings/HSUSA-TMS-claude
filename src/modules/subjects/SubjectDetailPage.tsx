@@ -29,9 +29,9 @@ export default function SubjectDetailPage(props: Props) {
 
     useEffect(() => { void loadSubject(); }, [props.subjectId]);
 
-    async function updateSubject(subjectName: string, description: string) {
-        if (!subjectName.trim()) {
-            setMessage("Subject name is required.");
+    async function updateSubject(code: string, subjectName: string, description: string) {
+        if (!code.trim() || !subjectName.trim()) {
+            setMessage("Subject code and name are required.");
             return;
         }
 
@@ -40,6 +40,7 @@ export default function SubjectDetailPage(props: Props) {
         try {
             const result = await subjectService.updateSubject(
                 props.subjectId,
+                code.trim(),
                 subjectName.trim(),
                 description.trim()
             );
@@ -79,6 +80,7 @@ export default function SubjectDetailPage(props: Props) {
     if (editing) {
         return (
             <EditSubjectForm
+                code={subject.code ?? ""}
                 subjectName={subject.subjectName ?? ""}
                 description={subject.description ?? ""}
                 onCancel={() => { setEditing(false); setMessage(""); }}
@@ -95,6 +97,7 @@ export default function SubjectDetailPage(props: Props) {
             </button>
             <h1>Subject Detail</h1>
             {message && <p>{message}</p>}
+            <p><strong>Code:</strong> {subject.code}</p>
             <p><strong>Subject Name:</strong> {subject.subjectName}</p>
             <p><strong>Description:</strong> {subject.description ?? ""}</p>
             <p><strong>Created:</strong> {String(subject.createdAt)}</p>

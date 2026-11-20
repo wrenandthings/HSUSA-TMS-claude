@@ -15,11 +15,13 @@ export class SubjectService {
     }
 
     async createSubject(
+        code: string,
         subjectName: string,
         description: string
     ) {
 
         return await window.hsusa.createSubject({
+            code,
             subjectName,
             description
         });
@@ -27,12 +29,14 @@ export class SubjectService {
 
     async updateSubject(
         id: string,
+        code: string,
         subjectName: string,
         description: string
     ) {
 
         return await window.hsusa.updateSubject({
             id,
+            code,
             subjectName,
             description
         });

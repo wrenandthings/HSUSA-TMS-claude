@@ -1,3 +1,11 @@
+export interface QuestionBankImportResult {
+    success: boolean;
+    created: number;
+    updated: number;
+    errors: string[];
+    message: string;
+}
+
 export class QuestionService {
     async getQuestions() {
         return await window.hsusa.getQuestions();
@@ -30,5 +38,10 @@ export class QuestionService {
         answer: string;
     }>) {
         return await window.hsusa.importQuestions(questions);
+    }
+
+    // The agreed 15-column question-bank format. dryRun checks without saving.
+    async importQuestionBank(csvText: string, dryRun: boolean): Promise<QuestionBankImportResult> {
+        return await window.hsusa.importQuestionBank({ csvText, dryRun });
     }
 }
