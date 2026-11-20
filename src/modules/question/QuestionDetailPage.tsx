@@ -1,3 +1,4 @@
+import { askToConfirm } from "../../components/askToConfirm";
 import { useEffect, useState } from "react";
 import { QuestionService } from "./QuestionService";
 import EditQuestionForm from "./EditQuestionForm";
@@ -51,7 +52,7 @@ export default function QuestionDetailPage(
 
     async function confirmDeleteQuestion() {
         if (
-            window.confirm(
+            await askToConfirm(
                 "Delete this question?"
             )
         ) {

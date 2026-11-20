@@ -1,3 +1,4 @@
+import { askToConfirm } from "../../components/askToConfirm";
 import { useEffect, useState } from "react";
 import { SubjectService } from "./SubjectService";
 import EditSubjectForm from "./EditSubjectForm";
@@ -104,8 +105,8 @@ export default function SubjectDetailPage(props: Props) {
             <p><strong>Updated:</strong> {String(subject.updatedAt)}</p>
             <button onClick={() => { setMessage(""); setEditing(true); }}>Edit Subject</button>
             <button
-                onClick={() => {
-                    if (window.confirm("Delete this subject?")) void deleteSubject();
+                onClick={async () => {
+                    if (await askToConfirm("Delete this subject?")) void deleteSubject();
                 }}
                 style={{ marginLeft: "10px" }}
             >

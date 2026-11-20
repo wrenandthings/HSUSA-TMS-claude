@@ -1,3 +1,4 @@
+import { askToConfirm } from "../../components/askToConfirm";
 import { useEffect, useState } from "react";
 import { RoleService } from "./RoleService";
 import EditRoleForm from "./EditRoleForm";
@@ -68,7 +69,7 @@ export default function RoleDetailPage(props: Props) {
     async function confirmDeleteRole() {
 
         if (
-            window.confirm(
+            await askToConfirm(
                 "Delete this role?"
             )
         ) {

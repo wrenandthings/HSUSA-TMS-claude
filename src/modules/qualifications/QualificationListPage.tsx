@@ -1,3 +1,4 @@
+import { askToConfirm } from "../../components/askToConfirm";
 import { useEffect, useState } from "react";
 import { Assignment, Qualification, QualificationInput, QualificationService } from "./QualificationService";
 import QualificationStatusBadge from "./QualificationStatusBadge";
@@ -172,7 +173,7 @@ export default function QualificationListPage(props: Props) {
     async function setSuspended(assignment: Assignment, suspended: boolean) {
         if (!selected) return;
         const verb = suspended ? "Suspend" : "Reinstate";
-        if (!window.confirm(`${verb} ${selected.name} for ${assignment.user.username}?`)) return;
+        if (!(await askToConfirm(`${verb} ${selected.name} for ${assignment.user.username}?`))) return;
         await run(() => service.updateAssignment({ assignmentId: assignment.id, suspended }), `Unable to ${verb.toLowerCase()}.`);
         await refreshSelected(selected.id);
     }
@@ -194,14 +195,14 @@ export default function QualificationListPage(props: Props) {
     async function setHidden(item: Qualification, hidden: boolean) {
         const verb = hidden ? "Hide" : "Unhide";
         const note = hidden ? " It will no longer appear in lists or on people's pages. Its history is kept, and you can unhide it." : "";
-        if (!window.confirm(`${verb} qualification "${item.name}"?${note}`)) return;
+        if (!(await askToConfirm(`${verb} qualification "${item.name}"?${note}`))) return;
         const ok = await run(() => service.setHidden(item.id, hidden), `Unable to ${verb.toLowerCase()} qualification.`);
         if (ok) setMessage(hidden ? `"${item.name}" is hidden.` : `"${item.name}" is visible again.`);
         await load();
     }
 
     async function remove(item: Qualification) {
-        if (!window.confirm(`Delete qualification "${item.name}"?`)) return;
+        if (!(await askToConfirm(`Delete qualification "${item.name}"?`))) return;
         const ok = await run(() => service.deleteQualification(item.id), "Unable to delete qualification.");
         if (!ok) return;
         setSelected(null);

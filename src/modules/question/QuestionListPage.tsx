@@ -1,3 +1,4 @@
+import { askToConfirm } from "../../components/askToConfirm";
 import { useEffect, useRef, useState } from "react";
 import { QuestionService, QuestionBankImportResult } from "./QuestionService";
 import QuestionDetailPage from "./QuestionDetailPage";
@@ -162,7 +163,7 @@ export default function QuestionListPage(props: Props) {
             ? "Delete this question?"
             : `Delete these ${questionIds.length} questions?`;
 
-        if (!window.confirm(message)) return;
+        if (!(await askToConfirm(message))) return;
 
         await questionService.deleteQuestions(questionIds);
         await loadQuestions();

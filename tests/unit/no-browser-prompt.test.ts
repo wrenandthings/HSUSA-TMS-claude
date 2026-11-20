@@ -14,6 +14,12 @@ function sourceFiles(dir: string): string[] {
 }
 
 describe("renderer code", () => {
+    it("never calls window.confirm() or alert(): on Windows they leave text boxes unable to take typing", () => {
+        const root = path.resolve(__dirname, "../../src");
+        const offenders = sourceFiles(root).filter(file => /\b(window\.)?(confirm|alert)\s*\(/.test(readFileSync(file, "utf8").replace(/askToConfirm/g, "")));
+        expect(offenders.map(f => path.relative(root, f))).toEqual([]);
+    });
+
     it("never calls window.prompt(), which Electron does not support", () => {
         const root = path.resolve(__dirname, "../../src");
         const offenders = sourceFiles(root).filter(file => /\bprompt\s*\(/.test(readFileSync(file, "utf8")));
