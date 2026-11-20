@@ -156,19 +156,15 @@ export default function UserDetailPage(props: Props) {
     if (changingPassword) {
         return (
             <ChangePasswordForm
+                title={`Set Password for ${user.username}`}
+                intro="Set a temporary password. The user must choose their own at next sign-in."
                 onChange={async (password) => {
-                    try {
-                        const result = await userService.changePassword(props.userId, password);
-                        if (!result?.success) {
-                            setMessage(result?.message ?? "Unable to change password.");
-                            return;
-                        }
-                        setMessage("Password changed successfully.");
-                        setChangingPassword(false);
-                        await load();
-                    } catch (error) {
-                        setMessage(formatError(error));
-                    }
+                    const result = await userService.changePassword(props.userId, password);
+                    if (!result?.success) return result?.message ?? "Unable to change password.";
+                    setMessage(result.message ?? "Password changed successfully.");
+                    setChangingPassword(false);
+                    await load();
+                    return null;
                 }}
                 onCancel={() => {
                     setChangingPassword(false);

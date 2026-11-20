@@ -18,18 +18,17 @@ export default function UserListPage(props: Props) {
         setUsers(await userService.getUsers());
     }
 
+    // Returns an error message for the form to show, or null on success.
     async function createUser(username: string, password: string, firstName: string, lastName: string, email: string, status: "ACTIVE" | "INACTIVE" | "LOCKED") {
         try {
             const result = await userService.createUser({ username, password, firstName, lastName, email, status });
-            if (!result.success) {
-                setMessage(result.message);
-                return;
-            }
+            if (!result.success) return result.message ?? "Unable to create user.";
             setCreating(false);
             setMessage("User created successfully.");
             await loadUsers();
+            return null;
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Unable to create user.");
+            return error instanceof Error ? error.message : "Unable to create user.";
         }
     }
 

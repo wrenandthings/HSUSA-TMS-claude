@@ -1,4 +1,5 @@
 const { PrismaClient } = require("@prisma/client");
+const { hashPassword } = require("../electron/main/passwords");
 
 const prisma = new PrismaClient();
 
@@ -101,7 +102,11 @@ async function main() {
 
             username: "admin",
 
-            passwordHash: "CHANGE_ME",
+            // Test password for a new installation. It is hashed, and the
+            // admin must choose a new one at first sign-in.
+            passwordHash: await hashPassword("CHANGE_ME"),
+
+            mustChangePassword: true,
 
             firstName: "System",
 

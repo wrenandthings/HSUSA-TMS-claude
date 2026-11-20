@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("hsusa", {
     applicationName: "HSUSA TMS",
     version: "1.0.0",
     login: (username, password) => ipcRenderer.invoke("auth-login", { username, password }),
+    changeOwnPassword: (currentPassword, newPassword) => ipcRenderer.invoke("auth-change-own-password", { currentPassword, newPassword }),
     logout: () => ipcRenderer.invoke("auth-logout"),
     getUserById: (userId) => ipcRenderer.invoke("users-get-by-id", userId),
     getUsers: () => ipcRenderer.invoke("users-get-all"),

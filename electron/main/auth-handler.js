@@ -1,38 +1,20 @@
 const { ipcMain } = require("electron");
 const { PrismaClient } = require("@prisma/client");
-const { setCurrentUser, clearCurrentUser } = require("./auth-context");
+const { setCurrentUser, clearCurrentUser, getCurrentUserId } = require("./auth-context");
+const { createAuthService } = require("./auth-service");
 
 const prisma = new PrismaClient();
+const auth = createAuthService(prisma);
 
 function registerAuthenticationHandlers() {
     ipcMain.handle("auth-login", async (event, request) => {
-        const user = await prisma.user.findUnique({
-            where: { username: request.username }
-        });
-
-        if (!user) {
-            return { success: false, message: "User not found" };
-        }
-
-        if (user.status !== "ACTIVE") {
-            return { success: false, message: "User account is not active" };
-        }
-
-        if (user.passwordHash !== request.password) {
-            return { success: false, message: "Invalid password" };
-        }
-
-        setCurrentUser(user.id);
-
-        return {
-            success: true,
-            message: "Login successful",
-            user: {
-                id: user.id,
-                username: user.username
-            }
-        };
+        const result = await auth.login(request?.username, request?.password);
+        if (result.success) setCurrentUser(result.user.id);
+        return result;
     });
+
+    ipcMain.handle("auth-change-own-password", async (event, request) =>
+        auth.changeOwnPassword(getCurrentUserId(), request?.currentPassword, request?.newPassword));
 
     ipcMain.handle("auth-logout", async () => {
         clearCurrentUser();

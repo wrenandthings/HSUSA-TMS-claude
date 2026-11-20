@@ -1,8 +1,13 @@
 const { ipcMain } = require("electron");
 const { PrismaClient } = require("@prisma/client");
 const { getCurrentUserId } = require("./auth-context");
+const { createAuthService } = require("./auth-service");
 
 const prisma = new PrismaClient();
+const auth = createAuthService(prisma);
+
+// Password hashes never leave the main process.
+const HIDE_PASSWORD = { passwordHash: true };
 
 async function requireAdministrator() {
     const userId = getCurrentUserId();
@@ -43,10 +48,11 @@ async function writeAudit(action) {
 }
 
 function registerUserHandlers() {
-    ipcMain.handle("users-get-all", async () => prisma.user.findMany({ orderBy: { username: "asc" } }));
+    ipcMain.handle("users-get-all", async () => prisma.user.findMany({ omit: HIDE_PASSWORD, orderBy: { username: "asc" } }));
 
     ipcMain.handle("users-get-by-id", async (event, userId) => prisma.user.findUnique({
         where: { id: userId },
+        omit: HIDE_PASSWORD,
         include: { userRoles: { include: { role: true } } }
     }));
 
@@ -55,10 +61,14 @@ function registerUserHandlers() {
         const existing = await prisma.user.findUnique({ where: { username: user.username } });
         if (existing) return { success: false, message: "Username already exists" };
 
+        const password = await auth.newAccountPasswordFields(user.password);
+        if (password.problem) return { success: false, message: password.problem };
+
         const createdUser = await prisma.user.create({
+            omit: HIDE_PASSWORD,
             data: {
                 username: user.username,
-                passwordHash: user.password,
+                ...password.data,
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email || null,
@@ -78,6 +88,7 @@ function registerUserHandlers() {
         if (existing) return { success: false, message: "Username already exists" };
 
         const updatedUser = await prisma.user.update({
+            omit: HIDE_PASSWORD,
             where: { id: user.id },
             data: {
                 username: user.username,
@@ -123,14 +134,10 @@ function registerUserHandlers() {
         return { success: true };
     });
 
+    // An administrator sets a temporary password; the user changes it at next sign-in.
     ipcMain.handle("users-change-password", async (event, request) => {
-        await requireAdministrator();
-        await prisma.user.update({
-            where: { id: request.userId },
-            data: { passwordHash: request.password }
-        });
-        await writeAudit("USER_PASSWORD_CHANGED");
-        return { success: true };
+        const actorId = await requireAdministrator();
+        return auth.setPasswordForUser(actorId, request.userId, request.password);
     });
 }
 

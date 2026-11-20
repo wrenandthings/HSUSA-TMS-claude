@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PASSWORD_RULES_TEXT } from "./ChangePasswordForm";
 
 interface Props {
     onCreate: (
@@ -8,7 +9,7 @@ interface Props {
         lastName: string,
         email: string,
         status: "ACTIVE" | "INACTIVE" | "LOCKED"
-    ) => void;
+    ) => Promise<string | null | void> | string | null | void; // returns an error message to show
     onCancel: () => void;
 }
 
@@ -19,12 +20,19 @@ export default function CreateUserForm(props: Props) {
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [status, setStatus] = useState<"ACTIVE" | "INACTIVE" | "LOCKED">("ACTIVE");
+    const [error, setError] = useState("");
+
+    async function create() {
+        const problem = await props.onCreate(username, password, firstName, lastName, email, status);
+        setError(problem || "");
+    }
 
     return (
         <div style={{ padding: "40px" }}>
             <h2>Create User</h2>
             <label>Username<br /><input value={username} onChange={(e) => setUsername(e.target.value)} /></label><br /><br />
-            <label>Temporary Password<br /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></label><br /><br />
+            <label>Temporary Password<br /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></label><br />
+            <small>{PASSWORD_RULES_TEXT} The user must change it at first sign-in.</small><br /><br />
             <label>First Name<br /><input value={firstName} onChange={(e) => setFirstName(e.target.value)} /></label><br /><br />
             <label>Last Name<br /><input value={lastName} onChange={(e) => setLastName(e.target.value)} /></label><br /><br />
             <label>Email<br /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label><br /><br />
@@ -35,7 +43,8 @@ export default function CreateUserForm(props: Props) {
                     <option value="LOCKED">Locked</option>
                 </select>
             </label><br /><br />
-            <button onClick={() => props.onCreate(username, password, firstName, lastName, email, status)}>Create User</button>
+            {error && <p style={{ color: "darkred" }}>{error}</p>}
+            <button onClick={() => void create()}>Create User</button>
             <button onClick={props.onCancel} style={{ marginLeft: "10px" }}>Cancel</button>
         </div>
     );

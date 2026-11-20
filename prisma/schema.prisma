@@ -8,19 +8,24 @@ datasource db {
 }
 
 model User {
-  id             String              @id @default(uuid())
-  username       String              @unique
-  passwordHash   String
-  firstName      String
-  lastName       String
-  email          String?
-  status         UserStatus
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  userRoles      UserRole[]
-  qualifications UserQualification[]
-  auditLogs      AuditLog[]
-  backups        Backup[]
+  id                 String              @id @default(uuid())
+  username           String              @unique
+  // bcrypt hash. Accounts from before hashing may still hold plain text
+  // until their next sign-in (electron/main/passwords.js).
+  passwordHash       String
+  // True for new accounts and after an admin sets a password: the user must
+  // choose their own password at the next sign-in.
+  mustChangePassword Boolean             @default(false)
+  firstName          String
+  lastName           String
+  email              String?
+  status             UserStatus
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  userRoles          UserRole[]
+  qualifications     UserQualification[]
+  auditLogs          AuditLog[]
+  backups            Backup[]
 }
 
 model Role {
