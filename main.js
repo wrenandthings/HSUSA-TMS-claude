@@ -1,5 +1,6 @@
 const { app, BrowserWindow } = require("electron");
 const path = require("path");
+require("./electron/main/load-env").loadEnv(__dirname);
 const { registerAuthenticationHandlers } = require("./electron/main/auth-handler");
 const { registerUserHandlers } = require("./electron/main/user-handler");
 const { registerRoleHandlers } = require("./electron/main/role-handler");
