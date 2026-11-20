@@ -33,6 +33,18 @@ export class UserService {
         return await window.hsusa.deleteUser(userId);
     }
 
+    async getRoles() {
+        return await window.hsusa.getRoles();
+    }
+
+    async addRole(userId: string, roleId: string) {
+        return await window.hsusa.addUserRole({ userId, roleId });
+    }
+
+    async removeRole(userId: string, roleId: string) {
+        return await window.hsusa.removeUserRole({ userId, roleId });
+    }
+
     async changePassword(userId: string, password: string) {
         return await window.hsusa.changeUserPassword({ userId, password });
     }

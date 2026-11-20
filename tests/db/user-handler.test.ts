@@ -48,4 +48,30 @@ describe("user and sign-in handlers", () => {
         expect(stored.mustChangePassword).toBe(true);
         expect(await call("auth-login", { username: "mech1", password: "Temporary-Pass-9" })).toMatchObject({ success: true, mustChangePassword: true });
     });
+
+    it("let an administrator add and remove roles, audited, without locking everyone out", async () => {
+        const roleId = async (name: string) => (await db.prisma.role.findUniqueOrThrow({ where: { roleName: name } })).id;
+        const admin = await db.prisma.user.findUniqueOrThrow({ where: { username: "admin" } });
+        const mech = await db.prisma.user.findUniqueOrThrow({ where: { username: "mech1" } });
+        await call("auth-login", { username: "admin", password: "Hangar-Door-42x" });
+
+        const added = await call("users-add-role", { userId: mech.id, roleId: await roleId("Maintenance") });
+        expect(added).toMatchObject({ success: true });
+        expect(added.user.userRoles.map((r: any) => r.role.roleName)).toEqual(["Maintenance"]);
+        expect(added.user.passwordHash).toBeUndefined();
+        expect(await call("users-add-role", { userId: mech.id, roleId: await roleId("Maintenance") })).toEqual({ success: false, message: "This user already has the Maintenance role." });
+
+        expect(await call("users-remove-role", { userId: admin.id, roleId: await roleId("Administrator") })).toEqual({
+            success: false, message: "You cannot remove your own Administrator role. Ask another administrator."
+        });
+        expect((await call("users-remove-role", { userId: mech.id, roleId: await roleId("Maintenance") })).success).toBe(true);
+
+        const actions = (await db.prisma.auditLog.findMany({ where: { entityId: mech.id } })).map(e => e.action);
+        expect(actions).toEqual(expect.arrayContaining(["USER_ROLE_ADDED", "USER_ROLE_REMOVED"]));
+
+        // Someone who is not an administrator is refused.
+        await call("auth-logout");
+        await call("auth-login", { username: "mech1", password: "Temporary-Pass-9" });
+        expect(await call("users-add-role", { userId: mech.id, roleId: await roleId("Administrator") })).toEqual({ success: false, message: "Administrator permission required" });
+    });
 });

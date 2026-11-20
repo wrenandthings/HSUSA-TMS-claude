@@ -5,6 +5,7 @@ import EditUserForm from "./EditUserForm";
 import { activeAssignmentFor, QualificationService } from "../qualifications/QualificationService";
 import QualificationStatusBadge from "../qualifications/QualificationStatusBadge";
 import { formatQualificationDate } from "../qualifications/qualificationStatusDisplay";
+import { askToConfirm } from "../../components/askToConfirm";
 
 interface Props {
     userId: string;
@@ -41,14 +42,19 @@ export default function UserDetailPage(props: Props) {
     const [qualificationDraft, setQualificationDraft] = useState<string[]>([]);
     const [originalQualificationIds, setOriginalQualificationIds] = useState<string[]>([]);
     const [savingQualifications, setSavingQualifications] = useState(false);
+    const [allRoles, setAllRoles] = useState<any[]>([]);
+    const [roleToAdd, setRoleToAdd] = useState("");
+    const [changingRoles, setChangingRoles] = useState(false);
 
     async function load() {
-        const [loadedUser, loadedQualifications] = await Promise.all([
+        const [loadedUser, loadedQualifications, loadedRoles] = await Promise.all([
             userService.getUserById(props.userId),
-            qualificationService.getQualifications()
+            qualificationService.getQualifications(),
+            userService.getRoles()
         ]);
 
         setUser(loadedUser);
+        setAllRoles(loadedRoles ?? []);
         setAllQualifications(loadedQualifications ?? []);
 
         const activeIds = getActiveQualificationIds(props.userId, loadedQualifications ?? []);
@@ -87,6 +93,34 @@ export default function UserDetailPage(props: Props) {
             await load();
         } catch (error) {
             setMessage(formatError(error));
+        }
+    }
+
+    // Administrator only; the main process refuses anyone else with a message.
+    async function addRole() {
+        if (!roleToAdd) return;
+        setChangingRoles(true);
+        try {
+            const result = await userService.addRole(props.userId, roleToAdd);
+            setMessage(result?.message ?? "Unable to add role.");
+            if (result?.success) {
+                setUser(result.user);
+                setRoleToAdd("");
+            }
+        } finally {
+            setChangingRoles(false);
+        }
+    }
+
+    async function removeRole(role: any) {
+        if (!(await askToConfirm(`Remove the ${role.roleName} role from ${user.username}?`))) return;
+        setChangingRoles(true);
+        try {
+            const result = await userService.removeRole(props.userId, role.id);
+            setMessage(result?.message ?? "Unable to remove role.");
+            if (result?.success) setUser(result.user);
+        } finally {
+            setChangingRoles(false);
         }
     }
 
@@ -247,6 +281,33 @@ export default function UserDetailPage(props: Props) {
             <p><strong>Name:</strong> {user.firstName} {user.lastName}</p>
             <p><strong>Email:</strong> {user.email ?? "N/A"}</p>
             <p><strong>Status:</strong> {user.status}</p>
+
+            <h2>Roles</h2>
+            {(user.userRoles ?? []).length === 0 ? (
+                <p>No roles assigned.</p>
+            ) : (
+                <ul>
+                    {[...user.userRoles]
+                        .sort((a: any, b: any) => a.role.roleName.localeCompare(b.role.roleName))
+                        .map((assignment: any) => (
+                            <li key={assignment.id} style={{ marginBottom: "6px" }}>
+                                {assignment.role.roleName.replace(/_/g, " ")}{" "}
+                                <button disabled={changingRoles} onClick={() => void removeRole(assignment.role)}>Remove</button>
+                            </li>
+                        ))}
+                </ul>
+            )}
+            <div style={{ marginBottom: "20px" }}>
+                <select aria-label="Role to add" value={roleToAdd} onChange={(e) => setRoleToAdd(e.target.value)}>
+                    <option value="">Choose a role…</option>
+                    {allRoles
+                        .filter((role) => !(user.userRoles ?? []).some((assignment: any) => assignment.roleId === role.id))
+                        .map((role) => (
+                            <option key={role.id} value={role.id}>{role.roleName.replace(/_/g, " ")}</option>
+                        ))}
+                </select>{" "}
+                <button disabled={!roleToAdd || changingRoles} onClick={() => void addRole()}>Add Role</button>
+            </div>
 
             <h2>Assigned Qualifications</h2>
             {activeQualifications.length === 0 ? (

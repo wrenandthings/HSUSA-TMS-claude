@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld("hsusa", {
     updateUser: (user) => ipcRenderer.invoke("users-update", user),
     deleteUser: (userId) => ipcRenderer.invoke("users-delete", userId),
     changeUserPassword: (request) => ipcRenderer.invoke("users-change-password", request),
+    addUserRole: (input) => ipcRenderer.invoke("users-add-role", input),
+    removeUserRole: (input) => ipcRenderer.invoke("users-remove-role", input),
     getRoles: () => ipcRenderer.invoke("roles-get-all"),
     getRoleById: (roleId) => ipcRenderer.invoke("roles-get-by-id", roleId),
     createRole: (role) => ipcRenderer.invoke("roles-create", role),

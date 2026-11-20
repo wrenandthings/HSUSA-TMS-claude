@@ -47,6 +47,34 @@ async function writeAudit(action) {
     });
 }
 
+async function audit(actorId, userId, action, roleName) {
+    await prisma.auditLog.create({
+        data: { userId: actorId, entity: "User", entityId: userId, action, newValue: JSON.stringify({ role: roleName }) }
+    });
+}
+
+// Wraps a role change: admin check, finds the user and role, and replies with
+// { success, message, user } (the user with roles) or { success: false, message }.
+function roleChange(work) {
+    return async (event, input) => {
+        try {
+            const actorId = await requireAdministrator();
+            const user = await prisma.user.findUnique({ where: { id: String(input?.userId ?? "") } });
+            if (!user) return { success: false, message: "User not found" };
+            const role = await prisma.role.findUnique({ where: { id: String(input?.roleId ?? "") } });
+            if (!role) return { success: false, message: "Role not found" };
+            const problem = await work(actorId, user.id, role);
+            if (problem) return { success: false, message: problem };
+            const updated = await prisma.user.findUnique({
+                where: { id: user.id }, omit: HIDE_PASSWORD, include: { userRoles: { include: { role: true } } }
+            });
+            return { success: true, message: "Roles updated.", user: updated };
+        } catch (error) {
+            return { success: false, message: error instanceof Error ? error.message : String(error) };
+        }
+    };
+}
+
 function registerUserHandlers() {
     ipcMain.handle("users-get-all", async () => prisma.user.findMany({ omit: HIDE_PASSWORD, orderBy: { username: "asc" } }));
 
@@ -133,6 +161,29 @@ function registerUserHandlers() {
         await writeAudit("USER_DELETED");
         return { success: true };
     });
+
+    // Roles (owner, 2026-11-20: role assignment was not built yet). Administrator
+    // only. Returns { success, message, user? } with the user's roles.
+    ipcMain.handle("users-add-role", roleChange(async (actorId, userId, role) => {
+        const already = await prisma.userRole.findUnique({ where: { userId_roleId: { userId, roleId: role.id } } });
+        if (already) return `This user already has the ${role.roleName} role.`;
+        await prisma.userRole.create({ data: { userId, roleId: role.id } });
+        await audit(actorId, userId, "USER_ROLE_ADDED", role.roleName);
+        return null;
+    }));
+
+    ipcMain.handle("users-remove-role", roleChange(async (actorId, userId, role) => {
+        const assignment = await prisma.userRole.findUnique({ where: { userId_roleId: { userId, roleId: role.id } } });
+        if (!assignment) return `This user does not have the ${role.roleName} role.`;
+        if (role.roleName === "Administrator") {
+            if (userId === actorId) return "You cannot remove your own Administrator role. Ask another administrator.";
+            const administrators = await prisma.userRole.count({ where: { roleId: role.id } });
+            if (administrators <= 1) return "The last Administrator cannot lose the Administrator role.";
+        }
+        await prisma.userRole.delete({ where: { id: assignment.id } });
+        await audit(actorId, userId, "USER_ROLE_REMOVED", role.roleName);
+        return null;
+    }));
 
     // An administrator sets a temporary password; the user changes it at next sign-in.
     ipcMain.handle("users-change-password", async (event, request) => {
