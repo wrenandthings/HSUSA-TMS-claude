@@ -8,10 +8,19 @@ import QualificationListPage from "../modules/qualifications/QualificationListPa
 
 export default function App() {
     const [loggedIn, setLoggedIn] = useState(false);
+    const [username, setUsername] = useState("");
     const [selectedModule, setSelectedModule] = useState("");
     const backToMenu = () => setSelectedModule("");
 
-    if (!loggedIn) return <LoginPage onLoginSuccess={() => setLoggedIn(true)} />;
+    // Clears the main-process session too, so permission checks see nobody.
+    async function signOut() {
+        await window.hsusa.logout?.();
+        setSelectedModule("");
+        setUsername("");
+        setLoggedIn(false);
+    }
+
+    if (!loggedIn) return <LoginPage onLoginSuccess={(name) => { setUsername(name); setLoggedIn(true); }} />;
     if (selectedModule === "users") return <UserListPage onBack={backToMenu} />;
     if (selectedModule === "roles") return <RoleListPage onBack={backToMenu} />;
     if (selectedModule === "subjects") return <SubjectListPage onBack={backToMenu} />;
@@ -20,7 +29,13 @@ export default function App() {
 
     return (
         <main style={{ padding: "40px" }}>
-            <h1>HSUSA Training Management System</h1>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <h1 style={{ margin: 0 }}>HSUSA Training Management System</h1>
+                <div>
+                    {username && <span style={{ marginRight: "12px" }}>Signed in as {username}</span>}
+                    <button onClick={() => void signOut()}>Sign Out</button>
+                </div>
+            </div>
             <h2>Main Menu</h2>
             <button onClick={() => setSelectedModule("users")}>Users</button><br /><br />
             <button onClick={() => setSelectedModule("roles")}>Roles</button><br /><br />

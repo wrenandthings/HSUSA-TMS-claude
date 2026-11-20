@@ -4,7 +4,7 @@ import MainMenu from "./MainMenu";
 import ChangePasswordForm from "../users/ChangePasswordForm";
 
 interface Props {
-    onLoginSuccess: () => void;
+    onLoginSuccess: (username: string) => void;
 }
 
 export default function LoginPage(props: Props) {
@@ -25,7 +25,7 @@ export default function LoginPage(props: Props) {
                 return;
             }
             setLoggedIn(true);
-            props.onLoginSuccess();
+            props.onLoginSuccess(result.user?.username ?? username);
         }
     }
 
@@ -35,7 +35,7 @@ export default function LoginPage(props: Props) {
         setMustChangePassword(false);
         setMessage("");
         setLoggedIn(true);
-        props.onLoginSuccess();
+        props.onLoginSuccess(currentUserName ?? "");
         return null;
     }
 
