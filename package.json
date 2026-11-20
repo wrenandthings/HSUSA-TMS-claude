@@ -10,6 +10,7 @@
     "start": "electron .",
     "pretest": "prisma generate",
     "test": "vitest run",
+    "dev:blank-admin": "node scripts/dev-blank-admin.js",
     "postinstall": "prisma generate"
   },
   "repository": {
