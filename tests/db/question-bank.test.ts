@@ -33,9 +33,9 @@ afterAll(async () => { await db.cleanup(); });
 const call = (channel: string, input?: unknown) => handlers.get(channel)!({}, input);
 
 describe("seeded subjects", () => {
-    it("are the eleven codes from the Seed Data Specification", async () => {
+    it("are the eleven codes from the Seed Data Specification, plus OMD (owner, 2026-11-21)", async () => {
         const codes = (await db.prisma.subject.findMany({ orderBy: { code: "asc" } })).map(s => s.code);
-        expect(codes).toEqual(["AW169", "COMM", "CRM", "HAA", "HAZMAT", "MAINT", "MGMT", "NVG", "OFFSHORE_IFR", "OMA", "PILOT"]);
+        expect(codes).toEqual(["AW169", "COMM", "CRM", "HAA", "HAZMAT", "MAINT", "MGMT", "NVG", "OFFSHORE_IFR", "OMA", "OMD", "PILOT"]);
     });
 });
 
@@ -52,22 +52,44 @@ describe("question-bank import", () => {
         expect(await db.prisma.question.count()).toBe(0);
 
         expect(await call("questions-import-bank", { csvText: maintCsv })).toMatchObject({ success: true, created: 704, updated: 0 });
-        const first = await db.prisma.question.findUniqueOrThrow({ where: { externalId: "MAINT-001" }, include: { subject: true } });
-        expect(first).toMatchObject({ correctAnswer: "C", answerC: "Director of Maintenance", reference: "OM-A 1.4.6, p. 42", active: true });
+        const first = await db.prisma.question.findUniqueOrThrow({ where: { externalId: "MAINT-001" }, include: { subject: true, document: true } });
+        expect(first).toMatchObject({ correctAnswer: "C", answerC: "Director of Maintenance", reference: "OM-A (US) V2.1-RC1, 1.4.6, p. 42", active: true });
         expect(first.subject?.code).toBe("MAINT");
+        expect(first.document?.code).toBe("OM-A");
+        expect(await db.prisma.question.count({ where: { document: { code: "OM-C" } } })).toBe(238);
 
         expect(await call("questions-import-bank", { csvText: maintCsv })).toMatchObject({ success: true, created: 0, updated: 704 });
         expect(await db.prisma.question.count()).toBe(704);
         expect(await db.prisma.auditLog.count({ where: { action: "QUESTIONS_IMPORTED" } })).toBe(2);
     });
 
-    it("imports nothing when one row names an unknown subject", async () => {
-        const header = maintCsv.split("\n", 1)[0];
-        const csv = `${header}\nNEW-1,Fine,a,b,c,d,A,a,Ref,,MAINT,,,,Yes\nNEW-2,Bad subject,a,b,c,d,A,a,Ref,,ASTRONOMY,,,,Yes\n`;
+    it("imports nothing when one row names an unknown subject or manual", async () => {
+        const header = maintCsv.split("\n", 1)[0].trim();
+        const row = (values: Record<string, string>) => header.split(",").map(name => values[name] ?? "").join(",");
+        const base = { questionText: "Q", answerA: "a", answerB: "b", answerC: "c", answerD: "d", correctAnswer: "A", answer: "a", reference: "Ref", subject: "MAINT", document: "OM-A", active: "Yes" };
+        const csv = [header,
+            row({ ...base, questionId: "NEW-1" }),
+            row({ ...base, questionId: "NEW-2", subject: "ASTRONOMY" }),
+            row({ ...base, questionId: "NEW-3", document: "OM-Z" })].join("\n");
         const result = await call("questions-import-bank", { csvText: csv });
         expect(result.success).toBe(false);
-        expect(result.errors).toEqual(['Row 3 (NEW-2): no subject has the code or name "ASTRONOMY".']);
+        expect(result.errors).toEqual([
+            'Row 3 (NEW-2): no subject has the code or name "ASTRONOMY".',
+            'Row 4 (NEW-3): no document has the code "OM-Z".'
+        ]);
         expect(await db.prisma.question.findUnique({ where: { externalId: "NEW-1" } })).toBeNull();
+    });
+
+    it("imports all four of Quail's banks: 1,806 questions, each with its manual", async () => {
+        for (const file of ["Maint_AMP_AMPI_question_bank.csv", "OMD_question_bank.csv", "OMC_question_bank.csv"]) {
+            const result = await call("questions-import-bank", { csvText: readFileSync(path.join(banks, file), "utf8") });
+            expect(result, file).toMatchObject({ success: true, errors: [] });
+        }
+        expect(await db.prisma.question.count()).toBe(1806);
+        expect(await db.prisma.question.count({ where: { documentId: null } })).toBe(0);
+        const byManual = await db.prisma.question.groupBy({ by: ["documentId"], _count: true });
+        expect(byManual).toHaveLength(5);
+        expect(await db.prisma.question.count({ where: { subject: { code: "OMD" } } })).toBe(305);
     });
 });
 

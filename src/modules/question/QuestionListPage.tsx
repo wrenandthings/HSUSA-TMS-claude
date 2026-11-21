@@ -39,6 +39,8 @@ export default function QuestionListPage(props: Props) {
     const [creating, setCreating] = useState(false);
     const [sortField, setSortField] = useState<SortField>("questionText");
     const [sortAscending, setSortAscending] = useState(true);
+    // Source manual filter (owner, 2026-11-20): "" shows every question.
+    const [manual, setManual] = useState("");
     const [csvRows, setCsvRows] = useState<QuestionCsvRow[]>([]);
     const [csvErrors, setCsvErrors] = useState<string[]>([]);
     const [importing, setImporting] = useState(false);
@@ -148,11 +150,12 @@ export default function QuestionListPage(props: Props) {
         );
     }
 
+    // Select all applies to the questions on screen (after the manual filter).
     function toggleAllSelected() {
         setSelectedIds((current) =>
-            current.length === questions.length
+            current.length === sortedQuestions.length
                 ? []
-                : questions.map((question) => question.id)
+                : sortedQuestions.map((question) => question.id)
         );
     }
 
@@ -169,7 +172,12 @@ export default function QuestionListPage(props: Props) {
         await loadQuestions();
     }
 
-    const sortedQuestions = [...questions].sort((left, right) => {
+    const manuals = [...new Map(questions.filter((q) => q.document).map((q) => [q.document.code, q.document])).values()]
+        .sort((a: any, b: any) => a.code.localeCompare(b.code));
+    const noManual = questions.filter((q) => !q.document).length;
+    const sortedQuestions = questions.filter((q) =>
+        manual === "" || (manual === "none" ? !q.document : q.document?.code === manual)
+    ).sort((left, right) => {
         const leftValue = String(left[sortField] ?? "").toLocaleLowerCase();
         const rightValue = String(right[sortField] ?? "").toLocaleLowerCase();
         const comparison = leftValue.localeCompare(rightValue);
@@ -197,7 +205,7 @@ export default function QuestionListPage(props: Props) {
         );
     }
 
-    const allSelected = questions.length > 0 && selectedIds.length === questions.length;
+    const allSelected = sortedQuestions.length > 0 && selectedIds.length === sortedQuestions.length;
 
     return (
         <div style={{ padding: "40px" }}>
@@ -236,6 +244,20 @@ export default function QuestionListPage(props: Props) {
                 >
                     {sortAscending ? "Ascending ↑" : "Descending ↓"}
                 </button>
+                <label htmlFor="question-manual" style={{ marginLeft: "24px" }}>Manual: </label>
+                <select
+                    id="question-manual"
+                    value={manual}
+                    onChange={(event) => { setManual(event.target.value); setSelectedIds([]); }}
+                >
+                    <option value="">All manuals ({questions.length})</option>
+                    {manuals.map((doc: any) => (
+                        <option key={doc.code} value={doc.code}>
+                            {doc.code} · {doc.title} ({questions.filter((q) => q.document?.code === doc.code).length})
+                        </option>
+                    ))}
+                    {noManual > 0 && <option value="none">No manual ({noManual})</option>}
+                </select>
             </div>
 
             <div style={{ margin: "20px 0" }}>
@@ -297,6 +319,7 @@ export default function QuestionListPage(props: Props) {
                             />
                         </th>
                         <th>Question</th>
+                        <th>Manual</th>
                         <th>Subject</th>
                         <th>Category</th>
                         <th>Difficulty</th>
@@ -316,6 +339,7 @@ export default function QuestionListPage(props: Props) {
                                 />
                             </td>
                             <td>{question.questionText}</td>
+                            <td>{question.document?.code ?? ""}</td>
                             <td>{question.subject?.code ?? ""}</td>
                             <td>{question.category}</td>
                             <td>{question.difficulty}</td>

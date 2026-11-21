@@ -2,7 +2,7 @@
 // (wren-sandbox commons/direct/finch-quail.md):
 //
 //   questionId, questionText, answerA, answerB, answerC, answerD,
-//   correctAnswer, answer, reference, category, subject, section,
+//   correctAnswer, answer, document, reference, category, subject, section,
 //   difficulty, sourceRevision, active
 //
 // - questionId becomes Question.externalId, so importing the same file again
@@ -10,6 +10,9 @@
 // - correctAnswer (A-D) is the source of truth. answer is only a check: a row
 //   whose answer does not match the option correctAnswer points to is refused.
 // - subject may be a subject code (MAINT) or a subject name (Maintenance).
+// - document (added 2026-11-20) is the source manual's code, such as OM-A or
+//   AMPI, and must match a Document. The column is optional, so older files
+//   still import; a blank value leaves the question without a document.
 // - The IMP-QBANK-001 header names (Question, AnswerA ... CorrectAnswer,
 //   Reference) are accepted too.
 // - Nothing is imported if any row has a problem, so a file never half-loads.
@@ -25,6 +28,8 @@ const HEADER_ALIASES = {
     answerd: "answerD",
     correctanswer: "correctAnswer",
     answer: "answer",
+    document: "document",
+    sourcedocument: "document",
     reference: "reference",
     category: "category",
     subject: "subject",
@@ -130,7 +135,8 @@ function parseQuestionBankCsv(text) {
             difficulty: raw.difficulty || null,
             sourceRevision: raw.sourceRevision || null,
             active,
-            subject: raw.subject
+            subject: raw.subject,
+            document: raw.document || null
         });
     });
 
@@ -145,8 +151,11 @@ function createQuestionBankImporter(prisma) {
 
         const subjects = await prisma.subject.findMany();
         const subjectFor = (value) => subjects.find((s) => same(s.code, value)) ?? subjects.find((s) => same(s.subjectName, value));
+        const documents = await prisma.document.findMany();
+        const documentFor = (value) => documents.find((d) => same(d.code, value));
         for (const row of rows) {
             if (!subjectFor(row.subject)) errors.push(`Row ${row.line} (${row.externalId}): no subject has the code or name "${row.subject}".`);
+            if (row.document && !documentFor(row.document)) errors.push(`Row ${row.line} (${row.externalId}): no document has the code "${row.document}".`);
         }
 
         const existing = new Set((await prisma.question.findMany({
@@ -162,8 +171,8 @@ function createQuestionBankImporter(prisma) {
         if (rows.length === 0) return { success: false, created: 0, updated: 0, errors: ["The file has no questions."], message: "Nothing was imported." };
         if (dryRun) return { success: true, created, updated, errors: [], message: `Ready to import: ${created} new, ${updated} updated.` };
 
-        const writes = rows.map(({ line, subject, ...data }) => {
-            const fields = { ...data, subjectId: subjectFor(subject).id };
+        const writes = rows.map(({ line, subject, document, ...data }) => {
+            const fields = { ...data, subjectId: subjectFor(subject).id, documentId: document ? documentFor(document).id : null };
             return prisma.question.upsert({ where: { externalId: data.externalId }, create: fields, update: fields });
         });
         writes.push(prisma.auditLog.create({

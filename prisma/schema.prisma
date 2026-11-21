@@ -115,8 +115,8 @@ model Subject {
 // questionId, so re-importing updates instead of duplicating. answer holds
 // the older free-text answer of questions entered by hand.
 model Question {
-  id             String   @id @default(uuid())
-  externalId     String?  @unique
+  id             String    @id @default(uuid())
+  externalId     String?   @unique
   questionText   String
   answerA        String?
   answerB        String?
@@ -128,14 +128,19 @@ model Question {
   section        String?
   difficulty     String?
   sourceRevision String?
-  active         Boolean  @default(true)
+  active         Boolean   @default(true)
   answer         String?
   subjectId      String?
-  subject        Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  subject        Subject?  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  // The manual the question comes from (owner, 2026-11-20: one pool of
+  // questions, filtered by source document for quizzes, tests and references).
+  documentId     String?
+  document       Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([subjectId])
+  @@index([documentId])
 }
 
 // A catalog entry such as PIC or HUET. Dates belong to each person's
@@ -201,14 +206,15 @@ enum AssignmentStatus {
 // v1.0). filePath is optional until the reference library (Phase 7) stores
 // the PDFs; versions and page references come with that phase.
 model Document {
-  id            String    @id @default(uuid())
-  code          String    @unique
+  id            String     @id @default(uuid())
+  code          String     @unique
   title         String
   description   String?
   version       String?
   filePath      String?
   effectiveDate DateTime?
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  active        Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  questions     Question[]
 }

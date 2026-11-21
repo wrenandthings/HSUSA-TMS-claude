@@ -176,7 +176,10 @@ const QUALIFICATIONS = [
 const DOCUMENTS = [
     { code: "OM-A", title: "Operations Manual Part A" },
     { code: "OM-C", title: "Operations Manual Part C" },
-    { code: "OM-D", title: "Operations Manual Part D" }
+    { code: "OM-D", title: "Operations Manual Part D" },
+    // Source documents of the maintenance question banks (Quail, 2026-11-20).
+    { code: "AMP", title: "Aircraft Maintenance Program" },
+    { code: "AMPI", title: "Aircraft Maintenance Planning Information" }
 ];
 
 async function seedDocuments() {
@@ -243,7 +246,10 @@ const SUBJECTS = [
     { code: "NVG", subjectName: "Night Vision Goggles" },
     { code: "HAA", subjectName: "Helicopter Air Ambulance" },
     { code: "OFFSHORE_IFR", subjectName: "Offshore IFR" },
-    { code: "AW169", subjectName: "AW169" }
+    { code: "AW169", subjectName: "AW169" },
+    // Owner, 2026-11-21: "For now make OM-D its own subject until I get more
+    // information from our manuals and processes."
+    { code: "OMD", subjectName: "Operations Manual Part D" }
 ];
 
 async function seedSubjects() {

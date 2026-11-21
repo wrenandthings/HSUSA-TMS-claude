@@ -29,7 +29,7 @@ function registerQuestionHandlers() {
     ipcMain.handle("questions-get-all", async () =>
         prisma.question.findMany({
             orderBy: { questionText: "asc" },
-            include: { subject: true }
+            include: { subject: true, document: true }
         })
     );
 

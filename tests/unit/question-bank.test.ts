@@ -54,12 +54,16 @@ describe("question-bank CSV parsing", () => {
         );
     });
 
-    it("reads both of Quail's banks with no problems", () => {
-        const maint = parseQuestionBankCsv(readFileSync(path.join(banks, "Maint_question_bank.csv"), "utf8"));
-        const ampi = parseQuestionBankCsv(readFileSync(path.join(banks, "Maint_AMP_AMPI_question_bank.csv"), "utf8"));
-        expect(maint.errors).toEqual([]);
-        expect(ampi.errors).toEqual([]);
-        expect(maint.rows).toHaveLength(704);
-        expect(ampi.rows).toHaveLength(504);
+    it("reads all four of Quail's banks with no problems, with the document column", () => {
+        const expected: Record<string, number> = {
+            "Maint_question_bank.csv": 704, "Maint_AMP_AMPI_question_bank.csv": 504,
+            "OMD_question_bank.csv": 305, "OMC_question_bank.csv": 293
+        };
+        for (const [file, count] of Object.entries(expected)) {
+            const { rows, errors } = parseQuestionBankCsv(readFileSync(path.join(banks, file), "utf8"));
+            expect(errors, file).toEqual([]);
+            expect(rows, file).toHaveLength(count);
+            expect(rows.every((r: any) => r.document), file).toBe(true);
+        }
     });
 });
