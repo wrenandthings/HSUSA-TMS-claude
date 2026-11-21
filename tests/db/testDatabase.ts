@@ -13,6 +13,8 @@ export type TestDatabase = { url: string; prisma: PrismaClient; run: (command: s
 // prisma/migrations to it, the same way a new installation would.
 export function createTestDatabase(): TestDatabase {
     const dir = mkdtempSync(path.join(tmpdir(), "hsusa-tms-test-"));
+    // Handlers write log files; keep test logs out of the project folder.
+    process.env.LOG_DIR = path.join(dir, "logs");
     const url = `file:${path.join(dir, "test.db")}`;
     const run = (command: string, args: string[]) =>
         execFileSync(bin(command), args, { cwd: root, env: { ...process.env, DATABASE_URL: url }, encoding: "utf8", stdio: "pipe" });

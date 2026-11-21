@@ -2,6 +2,7 @@ const { ipcMain } = require("electron");
 const { PrismaClient } = require("@prisma/client");
 const { getCurrentUserId } = require("./auth-context");
 const { createConfigurationService } = require("./configuration-service");
+const { getLogger } = require("./logging-service");
 
 const prisma = new PrismaClient();
 const settings = createConfigurationService(prisma);
@@ -24,8 +25,13 @@ function registerConfigurationHandlers() {
     ipcMain.handle("configuration-save", async (event, input) => {
         const userId = getCurrentUserId();
         if (!userId) return { success: false, message: "Authentication required" };
-        if (!(await isAdministrator(userId))) return { success: false, message: "Only an administrator can change settings." };
-        return settings.save(input?.changes, userId);
+        if (!(await isAdministrator(userId))) {
+            getLogger().security("SETTINGS_CHANGE_REFUSED", { userId });
+            return { success: false, message: "Only an administrator can change settings." };
+        }
+        const result = await settings.save(input?.changes, userId);
+        if (result.success) getLogger().application("SETTINGS_SAVED", { userId, keys: Object.keys(input?.changes ?? {}) });
+        return result;
     });
 }
 

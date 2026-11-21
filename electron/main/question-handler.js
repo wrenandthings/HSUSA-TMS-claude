@@ -7,6 +7,7 @@ const {
 
 const { getCurrentUserId } = require("./auth-context");
 const { createQuestionBankImporter } = require("./question-bank");
+const { getLogger } = require("./logging-service");
 
 const prisma = new PrismaClient();
 const bankImporter = createQuestionBankImporter(prisma);
@@ -97,8 +98,14 @@ function registerQuestionHandlers() {
     ipcMain.handle("questions-import-bank", async (event, input) => {
         try {
             const actorId = await requireQuestionManager();
-            return await bankImporter.importCsv(String(input?.csvText ?? ""), { actorId, dryRun: Boolean(input?.dryRun) });
+            const dryRun = Boolean(input?.dryRun);
+            const result = await bankImporter.importCsv(String(input?.csvText ?? ""), { actorId, dryRun });
+            getLogger().import(dryRun ? "QUESTION_BANK_CHECKED" : "QUESTION_BANK_IMPORTED", {
+                userId: actorId, success: result.success, created: result.created, updated: result.updated, problems: result.errors.length
+            });
+            return result;
         } catch (error) {
+            getLogger().import("QUESTION_BANK_REFUSED", { userId: getCurrentUserId(), reason: error instanceof Error ? error.message : String(error) });
             return { success: false, created: 0, updated: 0, errors: [], message: error instanceof Error ? error.message : String(error) };
         }
     });

@@ -8,6 +8,10 @@ const { registerSubjectHandlers } = require("./electron/main/subject-handler");
 const { registerQuestionHandlers } = require("./electron/main/question-handler");
 const { registerQualificationHandlers } = require("./electron/main/qualification-handler");
 const { registerConfigurationHandlers } = require("./electron/main/configuration-handler");
+const { getLogger } = require("./electron/main/logging-service");
+
+process.on("uncaughtException", (error) => getLogger().failure("UNCAUGHT_EXCEPTION", error));
+process.on("unhandledRejection", (reason) => getLogger().failure("UNHANDLED_REJECTION", reason));
 
 let mainWindow = null;
 
@@ -24,6 +28,7 @@ function createMainWindow() {
 }
 
 app.whenReady().then(() => {
+    getLogger().application("APP_STARTED", { version: app.getVersion() });
     registerUserHandlers();
     registerSubjectHandlers();
     registerQuestionHandlers();
@@ -35,3 +40,4 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => app.quit());
+app.on("will-quit", () => getLogger().application("APP_STOPPED"));

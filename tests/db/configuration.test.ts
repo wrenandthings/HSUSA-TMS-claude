@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -60,6 +61,16 @@ describe("settings", () => {
 
         await call("auth-logout");
         expect((await call("auth-login", { username: "admin", password: "Hangar-Door-42x" })).sessionTimeoutMinutes).toBe(15);
+    });
+
+    it("write sign-ins, failures and settings to the log files, never a password", async () => {
+        await call("auth-login", { username: "admin", password: "Wrong-Password-1" });
+        const security = readFileSync(path.join(process.env.LOG_DIR!, "security.log"), "utf8");
+        expect(security).toContain('"event":"SIGN_IN_FAILED"');
+        expect(security).toContain('"event":"SIGNED_IN"');
+        expect(security).not.toContain("Wrong-Password-1");
+        expect(security).not.toContain("Hangar-Door-42x");
+        expect(readFileSync(path.join(process.env.LOG_DIR!, "application.log"), "utf8")).toContain('"event":"SETTINGS_SAVED"');
     });
 
     it("record an idle sign-out", async () => {
