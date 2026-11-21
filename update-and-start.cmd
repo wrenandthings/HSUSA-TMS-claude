@@ -77,9 +77,12 @@ if defined NEED_INSTALL (
     echo  [2/5] Packages unchanged, skipping install.
 )
 
-rem 5. Database: apply new migrations, then the seed (which never
+rem 5. Database: rebuild the database code from the schema (npm ci does this
+rem    too, but only runs when packages change; a schema change alone needs it,
+rem    found 2026-11-21), apply new migrations, then the seed (which never
 rem    overwrites existing records).
 echo  [3/5] Updating the database ...
+call npx prisma generate || goto :failed
 call npx prisma migrate deploy || goto :failed
 echo  [4/5] Adding any new starting data ...
 call npx prisma db seed || goto :failed
