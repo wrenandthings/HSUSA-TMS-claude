@@ -172,6 +172,8 @@ function createQuizService(prisma, { random = Math.random, now = () => new Date(
             id: session.id,
             name: session.name,
             type: session.quizType,
+            subjectId: session.subjectId,
+            documentId: session.documentId,
             practice,
             completed,
             startedAt: session.startedAt,

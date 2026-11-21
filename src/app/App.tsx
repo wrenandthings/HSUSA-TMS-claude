@@ -6,12 +6,14 @@ import SubjectListPage from "../modules/subjects/SubjectListPage";
 import QuestionListPage from "../modules/question/QuestionListPage";
 import QualificationListPage from "../modules/qualifications/QualificationListPage";
 import SettingsPage from "../modules/settings/SettingsPage";
+import QuizzesPage from "../modules/quizzes/QuizzesPage";
 
-type Section = "home" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
+type Section = "home" | "quizzes" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
 
 // The sidebar, in the order of the approved design (2026-11-20).
 const SECTIONS: { id: Section; label: string; description: string }[] = [
     { id: "home", label: "Home", description: "" },
+    { id: "quizzes", label: "Quizzes", description: "Practice by subject or manual, find your weak areas, or take a certification quiz." },
     { id: "qualifications", label: "Qualifications", description: "Who holds what, when it expires, and the history of every change." },
     { id: "questions", label: "Question Bank", description: "Questions by subject, with answers and manual references. Import banks from CSV." },
     { id: "subjects", label: "Subjects", description: "The subjects questions belong to, such as MAINT or OMA." },
@@ -63,6 +65,7 @@ export default function App() {
     else if (section === "subjects") page = <SubjectListPage key={visit} onBack={goHome} />;
     else if (section === "questions") page = <QuestionListPage key={visit} onBack={goHome} />;
     else if (section === "qualifications") page = <QualificationListPage key={visit} onBack={goHome} />;
+    else if (section === "quizzes") page = <QuizzesPage key={visit} />;
     else if (section === "settings") page = <SettingsPage key={visit} onTimeoutChanged={setTimeoutMinutes} />;
     else page = <Home username={username} onOpen={open} />;
 
