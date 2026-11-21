@@ -43,7 +43,8 @@ describe("Electron start-up", () => {
 
     it("registers the handlers every screen uses", () => {
         for (const channel of ["auth-login", "auth-logout", "users-get-all", "roles-get-all", "subjects-get-all", "questions-get-all",
-            "questions-import-bank", "qualifications-get-all", "configuration-get-all", "backups-create"]) {
+            "questions-import-bank", "qualifications-get-all", "configuration-get-all", "backups-create",
+            "quizzes-options", "quizzes-start", "quizzes-answer", "quizzes-finish", "quizzes-history"]) {
             expect(channels, channel).toContain(channel);
         }
     });

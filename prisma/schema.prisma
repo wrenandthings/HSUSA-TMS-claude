@@ -26,6 +26,7 @@ model User {
   qualifications     UserQualification[]
   auditLogs          AuditLog[]
   backups            Backup[]
+  quizSessions       QuizSession[]
 }
 
 model Role {
@@ -139,6 +140,9 @@ model Question {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  quizQuestions QuizQuestion[]
+  quizAnswers   QuizAnswer[]
+
   @@index([subjectId])
   @@index([documentId])
 }
@@ -217,4 +221,67 @@ model Document {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   questions     Question[]
+}
+
+enum QuizType {
+  RANDOM
+  WEAK_AREA
+  UNSEEN
+  CERTIFICATION
+}
+
+// Quiz engine (Phase 4), from the Prisma Schema spec v1.0, plus:
+// - name, subjectId and documentId: what the quiz was drawn from;
+// - passMarkPercent and passed: the pass mark in force when it was taken;
+// - QuizQuestion.answerOrder: the shuffled order the options were shown in
+//   (owner: shuffle at display), e.g. "CADB", so review shows the same order;
+// - QuizQuestion.flagged: the Flag button on the quiz screen (UI spec QUIZ-002).
+// QuizAnswer.selectedAnswer is the question's own letter (A-D), not the
+// position on screen. One answer per question per quiz (changing it updates it).
+model QuizSession {
+  id              String         @id @default(uuid())
+  userId          String
+  quizType        QuizType
+  name            String
+  subjectId       String?
+  documentId      String?
+  startedAt       DateTime       @default(now())
+  completedAt     DateTime?
+  scorePercent    Float?
+  passMarkPercent Int
+  passed          Boolean?
+  questionCount   Int
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions       QuizQuestion[]
+  answers         QuizAnswer[]
+
+  @@index([userId, completedAt])
+}
+
+model QuizQuestion {
+  id            String      @id @default(uuid())
+  quizSessionId String
+  questionId    String
+  displayOrder  Int
+  answerOrder   String
+  flagged       Boolean     @default(false)
+  session       QuizSession @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+  question      Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([quizSessionId, questionId])
+  @@unique([quizSessionId, displayOrder])
+}
+
+model QuizAnswer {
+  id             String      @id @default(uuid())
+  quizSessionId  String
+  questionId     String
+  selectedAnswer String
+  correct        Boolean
+  answeredAt     DateTime    @default(now())
+  session        QuizSession @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+  question       Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([quizSessionId, questionId])
+  @@index([questionId])
 }

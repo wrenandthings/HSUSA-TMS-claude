@@ -73,7 +73,11 @@ async function main() {
         { key: "BackupRetentionDays", value: "90", description: "Days to keep backups" },
         { key: "AuditRetentionDays", value: "365", description: "Days to keep audit records" },
         { key: "MinimumPasswordLength", value: "12", description: "Minimum password length" },
-        { key: "PasswordComplexityRequired", value: "TRUE", description: "Require complex passwords" }
+        { key: "PasswordComplexityRequired", value: "TRUE", description: "Require complex passwords" },
+        // Quiz engine (Phase 4). Defaults chosen by Finch 2026-11-21; admin-adjustable.
+        { key: "QuizPassMarkPercent", value: "80", description: "Pass mark for quizzes" },
+        { key: "QuizQuestionCount", value: "20", description: "Questions in a practice quiz" },
+        { key: "CertificationQuestionCount", value: "50", description: "Questions in a certification quiz" }
     ];
 
     for (const config of configs) {
