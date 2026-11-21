@@ -126,6 +126,7 @@ describe("unseen and weak area quizzes", () => {
         await quizzes.finish(other, first.id);
         const weak = await start(other, { type: "WEAK_AREA" });
         expect(weak.items.map((i: any) => i.questionId)).toEqual([first.items[0].questionId]);
+        expect((await quizzes.start(other, { type: "WEAK_AREA", count: 5 })).note).toBe("You have 1 missed question, so this quiz has 1.");
     });
 });
 

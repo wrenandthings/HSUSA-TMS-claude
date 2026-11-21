@@ -146,7 +146,11 @@ function createQuizService(prisma, { random = Math.random, now = () => new Date(
                 }
             }
         });
-        const note = questionIds.length < asked ? `Only ${questionIds.length} questions match, so this quiz has ${questionIds.length}.` : null;
+        const n = questionIds.length;
+        const what = type === "WEAK_AREA" ? `You have ${n} missed question${n === 1 ? "" : "s"}`
+            : type === "UNSEEN" ? `You have ${n} unseen question${n === 1 ? "" : "s"} left`
+            : `Only ${n} question${n === 1 ? " matches" : "s match"}`;
+        const note = n < asked ? `${what}, so this quiz has ${n}.` : null;
         return { success: true, sessionId: session.id, note };
     }
 
