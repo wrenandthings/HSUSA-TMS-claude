@@ -7,6 +7,7 @@ const { registerRoleHandlers } = require("./electron/main/role-handler");
 const { registerSubjectHandlers } = require("./electron/main/subject-handler");
 const { registerQuestionHandlers } = require("./electron/main/question-handler");
 const { registerQualificationHandlers } = require("./electron/main/qualification-handler");
+const { registerConfigurationHandlers } = require("./electron/main/configuration-handler");
 
 let mainWindow = null;
 
@@ -29,6 +30,7 @@ app.whenReady().then(() => {
     registerAuthenticationHandlers();
     registerRoleHandlers();
     registerQualificationHandlers();
+    registerConfigurationHandlers();
     createMainWindow();
 });
 

@@ -3,6 +3,7 @@ import { useState } from "react";
 interface Props {
     onLogin: (username: string, password: string) => void;
     message?: string;
+    notice?: string;
 }
 
 // A real form, so Enter signs in from either field.
@@ -30,6 +31,7 @@ export default function LoginForm(props: Props) {
                 Password
                 <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
             </label>
+            {props.notice && <div className="signin-notice" role="status">{props.notice}</div>}
             {props.message && <div className="signin-error" role="alert">{props.message}</div>}
             <button type="submit" className="primary">Sign in</button>
             <p className="hint">Forgot your password? Ask your administrator to set a temporary one. You'll choose your own when you next sign in.</p>

@@ -4,7 +4,9 @@ import MainMenu from "./MainMenu";
 import ChangePasswordForm from "../users/ChangePasswordForm";
 
 interface Props {
-    onLoginSuccess: (username: string) => void;
+    onLoginSuccess: (username: string, sessionTimeoutMinutes: number) => void;
+    // Shown above the form, for example after an idle sign-out.
+    notice?: string;
 }
 
 export default function LoginPage(props: Props) {
@@ -13,19 +15,22 @@ export default function LoginPage(props: Props) {
     const [currentUserName, setCurrentUserName] = useState<string | null>(null);
     // Set when the account must choose a new password before going on.
     const [mustChangePassword, setMustChangePassword] = useState(false);
+    const [timeoutMinutes, setTimeoutMinutes] = useState(30);
 
     async function login(username: string, password: string) {
         const result = await window.hsusa.login(username, password);
         setMessage(result.message);
 
         if (result.success) {
+            const minutes = Number(result.sessionTimeoutMinutes) || 30;
+            setTimeoutMinutes(minutes);
             setCurrentUserName(result.user?.username ?? username);
             if (result.mustChangePassword) {
                 setMustChangePassword(true);
                 return;
             }
             setLoggedIn(true);
-            props.onLoginSuccess(result.user?.username ?? username);
+            props.onLoginSuccess(result.user?.username ?? username, minutes);
         }
     }
 
@@ -35,7 +40,7 @@ export default function LoginPage(props: Props) {
         setMustChangePassword(false);
         setMessage("");
         setLoggedIn(true);
-        props.onLoginSuccess(currentUserName ?? "");
+        props.onLoginSuccess(currentUserName ?? "", timeoutMinutes);
         return null;
     }
 
@@ -84,7 +89,7 @@ export default function LoginPage(props: Props) {
                 <div className="signin-foot">HeliService USA · North Kingstown, Rhode Island</div>
             </section>
             <main className="signin-main">
-                <LoginForm onLogin={login} message={message} />
+                <LoginForm onLogin={login} message={message} notice={message ? undefined : props.notice} />
             </main>
         </div>
     );

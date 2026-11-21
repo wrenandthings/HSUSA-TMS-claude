@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import LoginPage from "../modules/auth/LoginPage";
 import UserListPage from "../modules/users/UserListPage";
 import RoleListPage from "../modules/roles/RoleListPage";
 import SubjectListPage from "../modules/subjects/SubjectListPage";
 import QuestionListPage from "../modules/question/QuestionListPage";
 import QualificationListPage from "../modules/qualifications/QualificationListPage";
+import SettingsPage from "../modules/settings/SettingsPage";
 
-type Section = "home" | "qualifications" | "questions" | "subjects" | "users" | "roles";
+type Section = "home" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
 
 // The sidebar, in the order of the approved design (2026-11-20).
 const SECTIONS: { id: Section; label: string; description: string }[] = [
@@ -15,7 +16,8 @@ const SECTIONS: { id: Section; label: string; description: string }[] = [
     { id: "questions", label: "Question Bank", description: "Questions by subject, with answers and manual references. Import banks from CSV." },
     { id: "subjects", label: "Subjects", description: "The subjects questions belong to, such as MAINT or OMA." },
     { id: "users", label: "Users", description: "Accounts, roles, temporary passwords and each person's qualifications." },
-    { id: "roles", label: "Roles", description: "The roles that decide what each person may change." }
+    { id: "roles", label: "Roles", description: "The roles that decide what each person may change." },
+    { id: "settings", label: "Settings", description: "Sign-out time, password rules, alerts and record keeping. Administrators can change them." }
 ];
 
 export default function App() {
@@ -25,6 +27,9 @@ export default function App() {
     // Changing this remounts the page, so clicking its sidebar item again
     // returns to the top of that section (out of a detail or edit view).
     const [visit, setVisit] = useState(0);
+    const [timeoutMinutes, setTimeoutMinutes] = useState(30);
+    const [notice, setNotice] = useState("");
+    useIdleSignOut(loggedIn, timeoutMinutes, () => void signOut("idle"));
     const goHome = () => open("home");
 
     function open(next: Section) {
@@ -33,14 +38,24 @@ export default function App() {
     }
 
     // Clears the main-process session too, so permission checks see nobody.
-    async function signOut() {
-        await window.hsusa.logout?.();
+    async function signOut(reason?: "idle") {
+        await window.hsusa.logout?.(reason ? { reason } : undefined);
+        setNotice(reason === "idle"
+            ? `You were signed out after ${timeoutMinutes} minutes without activity. Sign in again to continue.`
+            : "");
         setSection("home");
         setUsername("");
         setLoggedIn(false);
     }
 
-    if (!loggedIn) return <LoginPage onLoginSuccess={(name) => { setUsername(name); setLoggedIn(true); }} />;
+    if (!loggedIn) {
+        return (
+            <LoginPage
+                notice={notice}
+                onLoginSuccess={(name, minutes) => { setUsername(name); setTimeoutMinutes(minutes); setNotice(""); setLoggedIn(true); }}
+            />
+        );
+    }
 
     let page;
     if (section === "users") page = <UserListPage key={visit} onBack={goHome} />;
@@ -48,6 +63,7 @@ export default function App() {
     else if (section === "subjects") page = <SubjectListPage key={visit} onBack={goHome} />;
     else if (section === "questions") page = <QuestionListPage key={visit} onBack={goHome} />;
     else if (section === "qualifications") page = <QualificationListPage key={visit} onBack={goHome} />;
+    else if (section === "settings") page = <SettingsPage key={visit} onTimeoutChanged={setTimeoutMinutes} />;
     else page = <Home username={username} onOpen={open} />;
 
     return (
@@ -103,4 +119,27 @@ function Home(props: { username: string; onOpen: (section: Section) => void }) {
             </div>
         </div>
     );
+}
+
+// Signs out after `minutes` with no mouse, keyboard, scroll or touch activity
+// (owner decision, question 18: admin-adjustable, default 30 minutes).
+function useIdleSignOut(active: boolean, minutes: number, onIdle: () => void) {
+    const onIdleRef = useRef(onIdle);
+    onIdleRef.current = onIdle;
+
+    useEffect(() => {
+        if (!active) return;
+        const limit = Math.max(1, minutes) * 60 * 1000;
+        let timer = window.setTimeout(() => onIdleRef.current(), limit);
+        const restart = () => {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(() => onIdleRef.current(), limit);
+        };
+        const events = ["mousemove", "mousedown", "keydown", "wheel", "touchstart"];
+        events.forEach((name) => window.addEventListener(name, restart, { passive: true }));
+        return () => {
+            window.clearTimeout(timer);
+            events.forEach((name) => window.removeEventListener(name, restart));
+        };
+    }, [active, minutes]);
 }

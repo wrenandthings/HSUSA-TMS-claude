@@ -235,3 +235,4 @@ th, td {
 .field input { min-height: 48px; font-size: 16px; font-weight: 400; }
 .signin-form button.primary { min-height: 50px; font-size: 16px; margin: 0; }
 .signin-error { color: var(--red-dark); font-weight: 600; font-size: 14px; }
+.signin-notice { padding: 12px 14px; border-radius: 8px; background: var(--blue-tint); color: var(--navy); font-size: 14px; line-height: 1.45; }
