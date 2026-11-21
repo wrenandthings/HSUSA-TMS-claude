@@ -104,13 +104,69 @@ export default function SettingsPage(props: Props) {
             ))}
 
             {canEdit && (
-                <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ display: "flex", gap: "8px", marginBottom: "32px" }}>
                     <button className="primary" disabled={changed.length === 0 || saving} onClick={() => void save()}>
                         {saving ? "Saving..." : changed.length > 1 ? `Save ${changed.length} changes` : "Save changes"}
                     </button>
                     <button disabled={changed.length === 0 || saving} onClick={() => { show(settings); setProblem(""); }}>Undo changes</button>
                 </div>
             )}
+            {canEdit && <BackupsSection />}
         </div>
+    );
+}
+
+interface BackupRow { id: string; name: string; createdAt: string; sizeBytes: number; }
+
+// Administrators only. A backup is also made automatically once a day when
+// the app starts; old ones are removed after the retention period above.
+function BackupsSection() {
+    const [rows, setRows] = useState<BackupRow[]>([]);
+    const [folder, setFolder] = useState("");
+    const [message, setMessage] = useState("");
+    const [working, setWorking] = useState(false);
+
+    useEffect(() => {
+        void (async () => {
+            const result = await window.hsusa.listBackups();
+            if (result?.success) { setRows(result.backups); setFolder(result.folder); }
+        })();
+    }, []);
+
+    async function backUpNow() {
+        setWorking(true);
+        try {
+            const result = await window.hsusa.createBackup();
+            setMessage(result?.message ?? "Backup failed.");
+            if (result?.backups) setRows(result.backups);
+        } finally {
+            setWorking(false);
+        }
+    }
+
+    const size = (bytes: number) => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+    return (
+        <section style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "12px", padding: "8px 20px 20px" }}>
+            <h2 style={{ fontSize: "17px", margin: "12px 0 4px" }}>Backups</h2>
+            <p style={{ color: "var(--slate)", fontSize: "14px", margin: "0 0 12px" }}>
+                A backup is made automatically once a day when the app starts. Folder: {folder || "next to the database"}
+            </p>
+            <button className="primary" disabled={working} onClick={() => void backUpNow()}>{working ? "Backing up..." : "Back up now"}</button>
+            {message && <p role="status" style={{ fontWeight: 600 }}>{message}</p>}
+            {rows.length === 0 ? (
+                <p style={{ color: "var(--slate)" }}>No backups yet.</p>
+            ) : (
+                <table style={{ width: "100%", marginTop: "12px" }}>
+                    <thead><tr><th>Backup</th><th>Made</th><th style={{ textAlign: "right" }}>Size</th></tr></thead>
+                    <tbody>
+                        {rows.slice(0, 10).map((b) => (
+                            <tr key={b.id}><td>{b.name}</td><td>{new Date(b.createdAt).toLocaleString()}</td><td style={{ textAlign: "right" }}>{size(b.sizeBytes)}</td></tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+            {rows.length > 10 && <p style={{ color: "var(--slate)", fontSize: "13px" }}>Showing the newest 10 of {rows.length}.</p>}
+        </section>
     );
 }

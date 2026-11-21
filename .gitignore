@@ -148,3 +148,6 @@ vite.config.ts.timestamp-*
 *.db-journal
 *.sqlite
 *.sqlite3
+
+# Database backups are made next to the database (prisma/backups/).
+prisma/backups/

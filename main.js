@@ -9,6 +9,7 @@ const { registerQuestionHandlers } = require("./electron/main/question-handler")
 const { registerQualificationHandlers } = require("./electron/main/qualification-handler");
 const { registerConfigurationHandlers } = require("./electron/main/configuration-handler");
 const { getLogger } = require("./electron/main/logging-service");
+const { registerBackupHandlers, backUpIfDue } = require("./electron/main/backup-handler");
 
 process.on("uncaughtException", (error) => getLogger().failure("UNCAUGHT_EXCEPTION", error));
 process.on("unhandledRejection", (reason) => getLogger().failure("UNHANDLED_REJECTION", reason));
@@ -36,7 +37,10 @@ app.whenReady().then(() => {
     registerRoleHandlers();
     registerQualificationHandlers();
     registerConfigurationHandlers();
+    registerBackupHandlers();
     createMainWindow();
+    // A daily backup, in the background, once the window is open.
+    void backUpIfDue();
 });
 
 app.on("window-all-closed", () => app.quit());

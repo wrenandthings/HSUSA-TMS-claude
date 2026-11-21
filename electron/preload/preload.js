@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld("hsusa", {
     logout: (input) => ipcRenderer.invoke("auth-logout", input),
     getSettings: () => ipcRenderer.invoke("configuration-get-all"),
     saveSettings: (changes) => ipcRenderer.invoke("configuration-save", { changes }),
+    listBackups: () => ipcRenderer.invoke("backups-list"),
+    createBackup: () => ipcRenderer.invoke("backups-create"),
     getUserById: (userId) => ipcRenderer.invoke("users-get-by-id", userId),
     getUsers: () => ipcRenderer.invoke("users-get-all"),
     createUser: (user) => ipcRenderer.invoke("users-create", user),
