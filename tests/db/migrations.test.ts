@@ -35,11 +35,11 @@ describe("seed on a new database", () => {
 });
 
 describe("seed data from the Seed Data Specification", () => {
-    it("creates the 11 qualifications with their renewal months", async () => {
+    it("creates the 11 qualifications with their renewal months, plus the RTS placeholder", async () => {
         const rows = await db.prisma.qualification.findMany({ orderBy: { code: "asc" } });
         expect(Object.fromEntries(rows.map(r => [r.code, r.renewalMonths]))).toEqual({
             CHECK_AIRMAN: 24, COMM_SPEC: 12, CRM: 12, HAA: 24, HUET: 48, IFR: 6,
-            INSTRUCTOR: 24, NVG: 12, OFFSHORE_IFR: 12, PIC: 12, SAR: 24
+            INSTRUCTOR: 24, NVG: 12, OFFSHORE_IFR: 12, PIC: 12, RTS: null, SAR: 24
         });
     });
 
@@ -48,6 +48,11 @@ describe("seed data from the Seed Data Specification", () => {
         expect(permissions).toBe(27);
         const admin = await db.prisma.role.findUniqueOrThrow({ where: { roleName: "Administrator" }, include: { permissions: true } });
         expect(admin.permissions).toHaveLength(permissions);
+    });
+
+    it("creates the OM-A, OM-C and OM-D documents, active", async () => {
+        const docs = await db.prisma.document.findMany({ orderBy: { code: "asc" } });
+        expect(docs.map(d => [d.code, d.active])).toEqual([["OM-A", true], ["OM-C", true], ["OM-D", true]]);
     });
 
     it("creates every configuration value", async () => {
@@ -63,6 +68,6 @@ describe("seed data from the Seed Data Specification", () => {
         await db.prisma.qualification.update({ where: { code: "HUET" }, data: { renewalMonths: 36 } });
         db.run("tsx", ["prisma/seed.ts"]);
         expect((await db.prisma.qualification.findUniqueOrThrow({ where: { code: "HUET" } })).renewalMonths).toBe(36);
-        expect(await db.prisma.qualification.count()).toBe(11);
+        expect(await db.prisma.qualification.count()).toBe(12);
     });
 });

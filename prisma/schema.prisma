@@ -196,3 +196,19 @@ enum AssignmentStatus {
   COMPLETED
   REVOKED
 }
+
+// A reference document such as the Operations Manual (Prisma Schema spec
+// v1.0). filePath is optional until the reference library (Phase 7) stores
+// the PDFs; versions and page references come with that phase.
+model Document {
+  id            String    @id @default(uuid())
+  code          String    @unique
+  title         String
+  description   String?
+  version       String?
+  filePath      String?
+  effectiveDate DateTime?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}

@@ -145,6 +145,7 @@ async function main() {
 
     await seedQualifications();
     await seedSubjects();
+    await seedDocuments();
     await seedPermissions(adminRole);
 
     console.log("Seed Complete");
@@ -164,8 +165,25 @@ const QUALIFICATIONS = [
     { code: "HUET", name: "HUET", renewalMonths: 48 },
     { code: "COMM_SPEC", name: "Communications Specialist", renewalMonths: 12 },
     { code: "INSTRUCTOR", name: "Instructor", renewalMonths: 24 },
-    { code: "CHECK_AIRMAN", name: "Check Airman", renewalMonths: 24 }
+    { code: "CHECK_AIRMAN", name: "Check Airman", renewalMonths: 24 },
+    // Placeholder for mechanics (owner, question 32), from the requirements
+    // doc: Return to Service authority, OM-A 11.8. Renewal is not set until the
+    // owner confirms the rules; the training manager can edit it in the app.
+    { code: "RTS", name: "Return to Service", description: "Placeholder: Return to Service authority (OM-A 11.8). Requirements to be confirmed." }
 ];
+
+// Reference documents from the Seed Data Specification v1.0.
+const DOCUMENTS = [
+    { code: "OM-A", title: "Operations Manual Part A" },
+    { code: "OM-C", title: "Operations Manual Part C" },
+    { code: "OM-D", title: "Operations Manual Part D" }
+];
+
+async function seedDocuments() {
+    for (const document of DOCUMENTS) {
+        await prisma.document.upsert({ where: { code: document.code }, update: {}, create: document });
+    }
+}
 
 async function seedQualifications() {
     for (const qualification of QUALIFICATIONS) {
