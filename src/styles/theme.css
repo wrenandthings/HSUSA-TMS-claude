@@ -295,3 +295,6 @@ th, td {
 .quiz-nav button[aria-current="step"] { border: 2px solid var(--blue); color: var(--blue); }
 .quiz-footer { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
 .score { font-family: var(--font-display); font-size: 56px; font-weight: 700; line-height: 1; }
+
+/* Count of records waiting, beside a sidebar item. */
+.nav-count { display: inline-block; margin-left: 8px; min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--red, #D23641); color: #fff; font-size: 12px; font-weight: 700; text-align: center; }

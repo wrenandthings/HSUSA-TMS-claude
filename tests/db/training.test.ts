@@ -42,6 +42,8 @@ describe("seeded requirements", () => {
         expect(pic.items.map((i: any) => `${i.type}:${i.code}`)).toEqual(["TRAINING:135.293", "TRAINING:135.299", "TRAINING:COMPANY_RECURRENT", "QUALIFICATION:CRM"]);
         expect((await statusOf("IFR")).items.map((i: any) => i.code)).toEqual(["135.293", "135.297", "PIC"]);
         expect(pic.status).toBe("INCOMPLETE");
+        expect((await training.myTraining(pilot)).canApprove).toBe(false);
+        expect((await training.myTraining(manager)).canApprove).toBe(true);
         expect((await statusOf("IFR")).items.find((i: any) => i.code === "PIC")).toMatchObject({ type: "QUALIFICATION", status: "MISSING" });
     });
 });

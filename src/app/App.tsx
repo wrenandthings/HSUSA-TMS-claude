@@ -7,12 +7,16 @@ import QuestionListPage from "../modules/question/QuestionListPage";
 import QualificationListPage from "../modules/qualifications/QualificationListPage";
 import SettingsPage from "../modules/settings/SettingsPage";
 import QuizzesPage from "../modules/quizzes/QuizzesPage";
+import MyTrainingPage from "../modules/training/MyTrainingPage";
+import ApprovalsPage from "../modules/training/ApprovalsPage";
 
-type Section = "home" | "quizzes" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
+type Section = "home" | "training" | "approvals" | "quizzes" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
 
 // The sidebar, in the order of the approved design (2026-11-20).
 const SECTIONS: { id: Section; label: string; description: string }[] = [
     { id: "home", label: "Home", description: "" },
+    { id: "training", label: "My training", description: "What each of your qualifications needs, when it is due, and your recorded training." },
+    { id: "approvals", label: "Approvals", description: "Training people have recorded, waiting for a manager to approve." },
     { id: "quizzes", label: "Quizzes", description: "Practice by subject or manual, find your weak areas, or take a certification quiz." },
     { id: "qualifications", label: "Qualifications", description: "Who holds what, when it expires, and the history of every change." },
     { id: "questions", label: "Question Bank", description: "Questions by subject, with answers and manual references. Import banks from CSV." },
@@ -33,6 +37,16 @@ export default function App() {
     const [notice, setNotice] = useState("");
     useIdleSignOut(loggedIn, timeoutMinutes, () => void signOut("idle"));
     const goHome = () => open("home");
+    // Managers see Approvals, with a count of records waiting.
+    const [canApprove, setCanApprove] = useState(false);
+    const [waiting, setWaiting] = useState(0);
+    async function refreshTraining() {
+        const result = await window.hsusa.myTraining?.();
+        setCanApprove(Boolean(result?.canApprove));
+        setWaiting(result?.pendingToReview ?? 0);
+    }
+    useEffect(() => { if (loggedIn) void refreshTraining(); }, [loggedIn, section]);
+    const visible = SECTIONS.filter((item) => item.id !== "approvals" || canApprove);
 
     function open(next: Section) {
         setSection(next);
@@ -66,8 +80,10 @@ export default function App() {
     else if (section === "questions") page = <QuestionListPage key={visit} onBack={goHome} />;
     else if (section === "qualifications") page = <QualificationListPage key={visit} onBack={goHome} />;
     else if (section === "quizzes") page = <QuizzesPage key={visit} />;
+    else if (section === "training") page = <MyTrainingPage key={visit} />;
+    else if (section === "approvals") page = <ApprovalsPage key={visit} onChanged={() => void refreshTraining()} />;
     else if (section === "settings") page = <SettingsPage key={visit} onTimeoutChanged={setTimeoutMinutes} />;
-    else page = <Home username={username} onOpen={open} />;
+    else page = <Home username={username} sections={visible} onOpen={open} />;
 
     return (
         <div className="app-shell">
@@ -78,13 +94,14 @@ export default function App() {
                     <div className="brand-stripe" aria-hidden="true"><span></span><span></span></div>
                 </div>
                 <div className="nav">
-                    {SECTIONS.map((item) => (
+                    {visible.map((item) => (
                         <button
                             key={item.id}
                             aria-current={section === item.id ? "page" : undefined}
                             onClick={() => open(item.id)}
                         >
                             {item.label}
+                            {item.id === "approvals" && waiting > 0 && <span className="nav-count" aria-label={`${waiting} waiting`}>{waiting}</span>}
                         </button>
                     ))}
                 </div>
@@ -104,7 +121,7 @@ export default function App() {
     );
 }
 
-function Home(props: { username: string; onOpen: (section: Section) => void }) {
+function Home(props: { username: string; sections: typeof SECTIONS; onOpen: (section: Section) => void }) {
     const today = new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     return (
         <div className="home">
@@ -113,7 +130,7 @@ function Home(props: { username: string; onOpen: (section: Section) => void }) {
                 <div className="home-sub">{today}</div>
             </div>
             <div className="cards">
-                {SECTIONS.filter((item) => item.id !== "home").map((item) => (
+                {props.sections.filter((item) => item.id !== "home").map((item) => (
                     <button key={item.id} className="card" onClick={() => props.onOpen(item.id)}>
                         <strong>{item.label}</strong>
                         <span>{item.description}</span>

@@ -79,8 +79,11 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
         const records = await prisma.userTrainingRecord.findMany({
             where: { userId }, include: { program: true, reviewer: { select: { username: true } } }, orderBy: { submittedAt: "desc" }, take: 50
         });
+        const canApprove = await isManager(userId);
         return {
             success: true,
+            canApprove,
+            pendingToReview: canApprove ? await prisma.userTrainingRecord.count({ where: { approval: "PENDING", userId: { not: userId } } }) : 0,
             qualifications: mine.map((q) => evaluate(ctx, q.code, today)),
             records: records.map((r) => ({
                 id: r.id, program: r.program.name, programCode: r.program.code, completionDate: r.completionDate, result: r.result,
