@@ -181,6 +181,8 @@ const DOCUMENTS = [
     { code: "OM-A", title: "Operations Manual Part A" },
     { code: "OM-C", title: "Operations Manual Part C" },
     { code: "OM-D", title: "Operations Manual Part D" },
+    // Quail, 2026-11-21: the AW169 Aircraft SOP bank.
+    { code: "OM-B", title: "Operations Manual Part B (AW169 Aircraft SOP)" },
     // Source documents of the maintenance question banks (Quail, 2026-11-20).
     { code: "AMP", title: "Aircraft Maintenance Program" },
     { code: "AMPI", title: "Aircraft Maintenance Planning Information" }

@@ -80,15 +80,16 @@ describe("question-bank import", () => {
         expect(await db.prisma.question.findUnique({ where: { externalId: "NEW-1" } })).toBeNull();
     });
 
-    it("imports all four of Quail's banks: 1,806 questions, each with its manual", async () => {
-        for (const file of ["Maint_AMP_AMPI_question_bank.csv", "OMD_question_bank.csv", "OMC_question_bank.csv"]) {
+    it("imports all five of Quail's banks: 2,106 questions, each with its manual", async () => {
+        for (const file of ["Maint_AMP_AMPI_question_bank.csv", "OMD_question_bank.csv", "OMC_question_bank.csv", "OMB_question_bank.csv"]) {
             const result = await call("questions-import-bank", { csvText: readFileSync(path.join(banks, file), "utf8") });
             expect(result, file).toMatchObject({ success: true, errors: [] });
         }
-        expect(await db.prisma.question.count()).toBe(1806);
+        expect(await db.prisma.question.count()).toBe(2106);
         expect(await db.prisma.question.count({ where: { documentId: null } })).toBe(0);
         const byManual = await db.prisma.question.groupBy({ by: ["documentId"], _count: true });
-        expect(byManual).toHaveLength(5);
+        expect(byManual).toHaveLength(6);
+        expect(await db.prisma.question.count({ where: { document: { code: "OM-B" }, subject: { code: "AW169" } } })).toBe(300);
         expect(await db.prisma.question.count({ where: { subject: { code: "OMD" } } })).toBe(305);
     });
 });

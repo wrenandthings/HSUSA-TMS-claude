@@ -54,10 +54,10 @@ describe("question-bank CSV parsing", () => {
         );
     });
 
-    it("reads all four of Quail's banks with no problems, with the document column", () => {
+    it("reads all five of Quail's banks with no problems, with the document column", () => {
         const expected: Record<string, number> = {
             "Maint_question_bank.csv": 704, "Maint_AMP_AMPI_question_bank.csv": 504,
-            "OMD_question_bank.csv": 305, "OMC_question_bank.csv": 293
+            "OMD_question_bank.csv": 305, "OMC_question_bank.csv": 293, "OMB_question_bank.csv": 300
         };
         for (const [file, count] of Object.entries(expected)) {
             const { rows, errors } = parseQuestionBankCsv(readFileSync(path.join(banks, file), "utf8"));

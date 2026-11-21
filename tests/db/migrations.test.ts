@@ -50,9 +50,9 @@ describe("seed data from the Seed Data Specification", () => {
         expect(admin.permissions).toHaveLength(permissions);
     });
 
-    it("creates the OM-A, OM-C, OM-D, AMP and AMPI documents, active", async () => {
+    it("creates the OM-A, OM-B, OM-C, OM-D, AMP and AMPI documents, active", async () => {
         const docs = await db.prisma.document.findMany({ orderBy: { code: "asc" } });
-        expect(docs.map(d => [d.code, d.active])).toEqual([["AMP", true], ["AMPI", true], ["OM-A", true], ["OM-C", true], ["OM-D", true]]);
+        expect(docs.map(d => [d.code, d.active])).toEqual([["AMP", true], ["AMPI", true], ["OM-A", true], ["OM-B", true], ["OM-C", true], ["OM-D", true]]);
     });
 
     it("creates every configuration value", async () => {
