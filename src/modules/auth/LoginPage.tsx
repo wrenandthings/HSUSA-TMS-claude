@@ -1,6 +1,5 @@
 import { useState } from "react";
 import LoginForm from "./LoginForm";
-import MainMenu from "./MainMenu";
 import ChangePasswordForm from "../users/ChangePasswordForm";
 
 interface Props {
@@ -71,7 +70,8 @@ export default function LoginPage(props: Props) {
     }
 
     if (loggedIn) {
-        return <MainMenu onLogout={logout} currentUserName={currentUserName} />;
+        // The app shell (App.tsx) takes over once onLoginSuccess has run.
+        return null;
     }
 
     return (
