@@ -1,0 +1,118 @@
+import { createRequire } from "node:module";
+import path from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createTestDatabase, TestDatabase } from "./testDatabase";
+
+// Training records and qualification requirements against a seeded database.
+const require = createRequire(import.meta.url);
+const { createTrainingService } = require(path.resolve(__dirname, "../../electron/main/training-service.js"));
+let db: TestDatabase;
+let training: any;
+let pilot: string;
+let manager: string;
+// "Today" for these tests: 2026-11-21, local time.
+const now = () => new Date(2026, 10, 21, 12, 0, 0);
+
+beforeAll(async () => {
+    db = createTestDatabase();
+    db.run("tsx", ["prisma/seed.ts"]);
+    training = createTrainingService(db.prisma, { now });
+    pilot = (await db.prisma.user.create({ data: { username: "pilot1", passwordHash: "x", firstName: "Pat", lastName: "Pilot", status: "ACTIVE" } })).id;
+    const tm = await db.prisma.role.findUniqueOrThrow({ where: { roleName: "Training_Manager" } });
+    manager = (await db.prisma.user.create({ data: { username: "tm1", passwordHash: "x", firstName: "Tess", lastName: "Manager", status: "ACTIVE", userRoles: { create: { roleId: tm.id } } } })).id;
+    for (const code of ["PIC", "IFR"]) {
+        const q = await db.prisma.qualification.findUniqueOrThrow({ where: { code } });
+        await db.prisma.userQualification.create({ data: { userId: pilot, qualificationId: q.id } });
+    }
+});
+afterAll(async () => { await db.cleanup(); });
+
+const program = async (code: string) => (await db.prisma.trainingProgram.findUniqueOrThrow({ where: { code } })).id;
+const record = async (code: string, date: string) => {
+    const result = await training.submit(pilot, { programId: await program(code), completionDate: date });
+    expect(result.success, result.message).toBe(true);
+    return (await db.prisma.userTrainingRecord.findFirstOrThrow({ where: { userId: pilot, program: { code } }, orderBy: { submittedAt: "desc" } })).id;
+};
+const mine = async () => (await training.myTraining(pilot)).qualifications;
+const statusOf = async (code: string) => (await mine()).find((q: any) => q.code === code);
+
+describe("seeded requirements", () => {
+    it("give PIC its checks, company training and a current CRM, and IFR a current PIC", async () => {
+        const pic = await statusOf("PIC");
+        expect(pic.items.map((i: any) => `${i.type}:${i.code}`)).toEqual(["TRAINING:135.293", "TRAINING:135.299", "TRAINING:COMPANY_RECURRENT", "QUALIFICATION:CRM"]);
+        expect((await statusOf("IFR")).items.map((i: any) => i.code)).toEqual(["135.293", "135.297", "PIC"]);
+        expect(pic.status).toBe("INCOMPLETE");
+        expect((await statusOf("IFR")).items.find((i: any) => i.code === "PIC")).toMatchObject({ type: "QUALIFICATION", status: "MISSING" });
+    });
+});
+
+describe("recording and approving training", () => {
+    it("records a person's own training as waiting for approval, and it does not count yet", async () => {
+        await record("135.293", "2026-03-10");
+        const item = (await statusOf("PIC")).items.find((i: any) => i.code === "135.293");
+        expect(item.status).toBe("MISSING");
+        expect((await training.myTraining(pilot)).records[0]).toMatchObject({ programCode: "135.293", approval: "PENDING" });
+    });
+
+    it("refuses a future date, a bad date and unknown training", async () => {
+        const id = await program("135.297");
+        expect(await training.submit(pilot, { programId: id, completionDate: "2026-12-01" })).toEqual({ success: false, message: "The completion date cannot be in the future." });
+        expect(await training.submit(pilot, { programId: id, completionDate: "2026-02-30" })).toEqual({ success: false, message: "Enter the date you completed it." });
+        expect(await training.submit(pilot, { programId: "nope", completionDate: "2026-01-01" })).toEqual({ success: false, message: "Choose the training you completed." });
+    });
+
+    it("lets only managers see and approve records, never their own, and wants a reason to reject", async () => {
+        expect(await training.pending(pilot)).toEqual({ success: false, message: "Only a manager can approve training." });
+        const list = await training.pending(manager);
+        expect(list.records).toHaveLength(1);
+        expect(list.records[0]).toMatchObject({ username: "pilot1", programCode: "135.293", own: false });
+        const id = list.records[0].id;
+        expect(await training.review(manager, id, false, "")).toEqual({ success: false, message: "Say why it is rejected, so the person can fix it." });
+        expect(await training.review(manager, id, true)).toEqual({ success: true, message: "Approved." });
+        expect(await training.review(manager, id, true)).toEqual({ success: false, message: "This record has already been reviewed." });
+        expect(await db.prisma.auditLog.count({ where: { action: "TRAINING_APPROVED", entityId: id } })).toBe(1);
+
+        const tmOwn = await training.submit(manager, { programId: await program("HUET_COURSE"), completionDate: "2026-01-05" });
+        expect(tmOwn.success).toBe(true);
+        const own = (await training.pending(manager)).records.find((r: any) => r.own);
+        expect(await training.review(manager, own.id, true)).toEqual({ success: false, message: "You cannot approve your own training. Ask another manager." });
+    });
+
+    it("counts the approved check, due at the end of the month a year later", async () => {
+        const item = (await statusOf("PIC")).items.find((i: any) => i.code === "135.293");
+        expect(item).toMatchObject({ code: "135.293", status: "CURRENT" });
+        expect(item.dueDate.toISOString().slice(0, 10)).toBe("2027-03-31");
+    });
+
+    it("lets a person withdraw a record that is still waiting, but not after review", async () => {
+        const id = await record("135.299", "2026-05-01");
+        expect(await training.withdraw(pilot, id)).toEqual({ success: true, message: "Withdrawn." });
+        const approved = (await db.prisma.userTrainingRecord.findFirstOrThrow({ where: { approval: "APPROVED" } })).id;
+        expect(await training.withdraw(pilot, approved)).toEqual({ success: false, message: "Only a record waiting for approval can be withdrawn." });
+        expect(await training.withdraw(manager, approved)).toEqual({ success: false, message: "Record not found." });
+    });
+});
+
+describe("qualification status from requirements", () => {
+    it("becomes current once every requirement is, and expires with the first one", async () => {
+        for (const [code, date] of [["135.299", "2026-01-20"], ["COMPANY_RECURRENT", "2026-06-15"], ["CRM_INITIAL", "2019-04-01"], ["CRM_RECURRENT", "2026-02-10"]]) {
+            const id = await record(code, date);
+            expect((await training.review(manager, id, true)).success).toBe(true);
+        }
+        const pic = await statusOf("PIC");
+        expect(pic.status).toBe("CURRENT");
+        // 135.299 done January 2026 is the first due: end of January 2027.
+        expect(pic.dueDate.toISOString().slice(0, 10)).toBe("2027-01-31");
+        expect(pic.graceEnd.toISOString().slice(0, 10)).toBe("2027-02-28");
+        const ifr = await statusOf("IFR");
+        expect(ifr.items.find((i: any) => i.code === "PIC").status).toBe("CURRENT");
+        expect(ifr.status).toBe("INCOMPLETE"); // 135.297 not done yet
+    });
+
+    it("shows suspended when the assignment is suspended", async () => {
+        const q = await db.prisma.qualification.findUniqueOrThrow({ where: { code: "PIC" } });
+        await db.prisma.userQualification.updateMany({ where: { userId: pilot, qualificationId: q.id }, data: { suspended: true } });
+        expect((await statusOf("PIC")).status).toBe("SUSPENDED");
+        await db.prisma.userQualification.updateMany({ where: { userId: pilot, qualificationId: q.id }, data: { suspended: false } });
+    });
+});

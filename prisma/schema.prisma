@@ -8,25 +8,27 @@ datasource db {
 }
 
 model User {
-  id                 String              @id @default(uuid())
-  username           String              @unique
+  id                      String               @id @default(uuid())
+  username                String               @unique
   // bcrypt hash. Accounts from before hashing may still hold plain text
   // until their next sign-in (electron/main/passwords.js).
-  passwordHash       String
+  passwordHash            String
   // True for new accounts and after an admin sets a password: the user must
   // choose their own password at the next sign-in.
-  mustChangePassword Boolean             @default(false)
-  firstName          String
-  lastName           String
-  email              String?
-  status             UserStatus
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  userRoles          UserRole[]
-  qualifications     UserQualification[]
-  auditLogs          AuditLog[]
-  backups            Backup[]
-  quizSessions       QuizSession[]
+  mustChangePassword      Boolean              @default(false)
+  firstName               String
+  lastName                String
+  email                   String?
+  status                  UserStatus
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  userRoles               UserRole[]
+  qualifications          UserQualification[]
+  auditLogs               AuditLog[]
+  backups                 Backup[]
+  quizSessions            QuizSession[]
+  trainingRecords         UserTrainingRecord[] @relation("TrainingRecordUser")
+  reviewedTrainingRecords UserTrainingRecord[] @relation("TrainingRecordReviewer")
 }
 
 model Role {
@@ -151,18 +153,19 @@ model Question {
 // assignment (UserQualification), not to the catalog entry.
 // renewalMonths is how long an award lasts; null means it does not expire.
 model Qualification {
-  id            String              @id @default(uuid())
-  code          String              @unique
-  name          String              @unique
+  id            String                     @id @default(uuid())
+  code          String                     @unique
+  name          String                     @unique
   description   String?
   renewalMonths Int?
-  active        Boolean             @default(true)
+  active        Boolean                    @default(true)
   // Hidden by an administrator because it was created in error (owner
   // decision 2026-11-19, question 24). History is kept; lists leave it out.
-  hidden        Boolean             @default(false)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  hidden        Boolean                    @default(false)
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
   assignments   UserQualification[]
+  requirements  QualificationRequirement[]
 }
 
 model UserQualification {
@@ -284,4 +287,72 @@ model QuizAnswer {
 
   @@unique([quizSessionId, questionId])
   @@index([questionId])
+}
+
+// Qualification requirements (owner decisions 2026-11-21, documents/DECISIONS.md):
+// a qualification is current only while every requirement is current.
+// From the Prisma Schema spec v1.0. requirementType is TRAINING (requirementRef
+// is a TrainingProgram code) or QUALIFICATION (requirementRef is a
+// Qualification code, e.g. IFR needs a current PIC).
+model QualificationRequirement {
+  id              String        @id @default(uuid())
+  qualificationId String
+  requirementType String
+  requirementRef  String
+  qualification   Qualification @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+
+  @@unique([qualificationId, requirementType, requirementRef])
+}
+
+// Something a person completes: a check ride, a course, recurrent training.
+// From the spec, plus renewalMonths (null = done once, never expires),
+// description and active. Modules are left for later.
+model TrainingProgram {
+  id            String               @id @default(uuid())
+  code          String               @unique
+  name          String
+  category      String
+  description   String?
+  renewalMonths Int?
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  records       UserTrainingRecord[]
+}
+
+enum TrainingResult {
+  PASS
+  FAIL
+  INCOMPLETE
+  WAIVED
+}
+
+enum RecordApproval {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A completed training event, recorded by the person and counted once
+// approved (owner, 2026-11-21). From the spec's UserTrainingRecord, with
+// moduleId left out for now and the approval fields added.
+model UserTrainingRecord {
+  id             String          @id @default(uuid())
+  userId         String
+  programId      String
+  completionDate DateTime
+  result         TrainingResult  @default(PASS)
+  instructorName String?
+  notes          String?
+  approval       RecordApproval  @default(PENDING)
+  submittedAt    DateTime        @default(now())
+  reviewedById   String?
+  reviewedAt     DateTime?
+  reviewNote     String?
+  user           User            @relation("TrainingRecordUser", fields: [userId], references: [id], onDelete: Cascade)
+  program        TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  reviewer       User?           @relation("TrainingRecordReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, programId])
+  @@index([approval])
 }

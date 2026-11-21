@@ -150,6 +150,7 @@ async function main() {
     await seedQualifications();
     await seedSubjects();
     await seedDocuments();
+    await seedRequirements();
     await seedPermissions(adminRole);
 
     console.log("Seed Complete");
@@ -264,6 +265,80 @@ async function seedSubjects() {
             where: { OR: [{ code: subject.code }, { subjectName: subject.subjectName }] }
         });
         if (!existing) await prisma.subject.create({ data: subject });
+    }
+}
+
+// Training programs and qualification requirements (owner decisions
+// 2026-11-21, documents/DECISIONS.md), from the Qualification Rules Matrix
+// v1.0 and the owner's Qualification requirements doc. renewalMonths null =
+// done once (an initial course), never expires. Existing programs and links
+// are left alone, so the Training Manager's later changes are kept.
+const PROGRAMS: { code: string; name: string; category: string; renewalMonths: number | null; description?: string }[] = [
+    { code: "135.293", name: "135.293 competency check", category: "Check", renewalMonths: 12 },
+    { code: "135.297", name: "135.297 instrument proficiency check", category: "Check", renewalMonths: 6 },
+    { code: "135.299", name: "135.299 line check", category: "Check", renewalMonths: 12 },
+    { code: "COMPANY_RECURRENT", name: "Company recurrent training", category: "Ground", renewalMonths: 12,
+      description: "Rules Matrix lists it without a period; 12 months follows 14 CFR 135.351. To be confirmed." },
+    { code: "CRM_INITIAL", name: "CRM initial", category: "CRM", renewalMonths: null },
+    { code: "CRM_RECURRENT", name: "CRM recurrent (programs A, B and C in rotation)", category: "CRM", renewalMonths: 12 },
+    { code: "OFFSHORE_GROUND", name: "Offshore ground training", category: "Ground", renewalMonths: 12 },
+    { code: "OFFSHORE_FLIGHT", name: "Offshore flight training", category: "Flight", renewalMonths: 12 },
+    { code: "OFFSHORE_INITIAL", name: "Offshore initial authorization (5 HEDA and 5 OSAP approaches, both seats)", category: "Flight", renewalMonths: null },
+    { code: "NVG_INITIAL_GROUND", name: "NVG initial ground", category: "Ground", renewalMonths: null },
+    { code: "NVG_INITIAL_FLIGHT", name: "NVG initial flight", category: "Flight", renewalMonths: null },
+    { code: "NVG_CHECK", name: "NVG qualification check", category: "Check", renewalMonths: null },
+    { code: "NVG_RECURRENT_GROUND", name: "NVG recurrent ground", category: "Ground", renewalMonths: 12 },
+    { code: "NVG_RECURRENT_FLIGHT", name: "NVG recurrent flight", category: "Flight", renewalMonths: 12 },
+    { code: "HAA_INITIAL", name: "HAA initial training", category: "Ground", renewalMonths: null },
+    { code: "HAA_LOCAL_AREA", name: "HAA local area training", category: "Flight", renewalMonths: null },
+    { code: "HAA_MEDICAL_SAR", name: "HAA medical / SAR training", category: "Ground", renewalMonths: null },
+    { code: "HAA_RECURRENT", name: "HAA recurrent training", category: "Ground", renewalMonths: 24 },
+    { code: "SAR_INITIAL", name: "SAR initial", category: "Ground", renewalMonths: null },
+    { code: "SAR_EMERGENCY", name: "SAR emergency training", category: "Flight", renewalMonths: 24 },
+    { code: "HUET_COURSE", name: "Approved HUET course", category: "Survival", renewalMonths: 48 },
+    { code: "GENERAL_SUBJECTS", name: "General subjects", category: "Ground", renewalMonths: null },
+    { code: "COMM_SPEC_INITIAL", name: "Communications Specialist initial", category: "Ground", renewalMonths: null },
+    { code: "INSTRUCTOR_GROUND", name: "Instructor ground training", category: "Ground", renewalMonths: null },
+    { code: "INSTRUCTOR_FLIGHT", name: "Instructor flight training", category: "Flight", renewalMonths: null },
+    { code: "INSTRUCTOR_RECURRENT", name: "Instructor recurrency", category: "Ground", renewalMonths: 24 },
+    { code: "INSTRUCTOR_OBSERVED", name: "Instructor observed evaluation", category: "Check", renewalMonths: 24 },
+    { code: "CHECK_AIRMAN_GROUND", name: "Check airman ground training", category: "Ground", renewalMonths: null },
+    { code: "CHECK_AIRMAN_FLIGHT", name: "Check airman flight training", category: "Flight", renewalMonths: null },
+    { code: "CHECK_AIRMAN_FAA", name: "Check airman FAA approval", category: "Approval", renewalMonths: null },
+    { code: "CHECK_AIRMAN_OBSERVED", name: "Check airman observed ride", category: "Check", renewalMonths: 24 }
+];
+
+// Qualification code -> requirements: "T:" a training program, "Q:" another
+// qualification that must be current. RTS (placeholder) has none yet.
+const REQUIREMENTS: Record<string, string[]> = {
+    PIC: ["T:135.293", "T:135.299", "T:COMPANY_RECURRENT", "Q:CRM"],
+    IFR: ["Q:PIC", "T:135.293", "T:135.297"],
+    OFFSHORE_IFR: ["Q:IFR", "T:OFFSHORE_GROUND", "T:OFFSHORE_FLIGHT", "T:OFFSHORE_INITIAL"],
+    NVG: ["T:NVG_INITIAL_GROUND", "T:NVG_INITIAL_FLIGHT", "T:NVG_CHECK", "T:NVG_RECURRENT_GROUND", "T:NVG_RECURRENT_FLIGHT"],
+    HAA: ["T:HAA_INITIAL", "T:HAA_LOCAL_AREA", "T:HAA_MEDICAL_SAR", "T:HAA_RECURRENT"],
+    SAR: ["T:SAR_INITIAL", "Q:CRM", "T:SAR_EMERGENCY"],
+    CRM: ["T:CRM_INITIAL", "T:CRM_RECURRENT"],
+    HUET: ["T:HUET_COURSE"],
+    COMM_SPEC: ["T:GENERAL_SUBJECTS", "Q:CRM", "T:COMM_SPEC_INITIAL", "T:COMPANY_RECURRENT"],
+    INSTRUCTOR: ["Q:PIC", "T:INSTRUCTOR_GROUND", "T:INSTRUCTOR_FLIGHT", "T:INSTRUCTOR_RECURRENT", "T:INSTRUCTOR_OBSERVED"],
+    CHECK_AIRMAN: ["Q:PIC", "T:CHECK_AIRMAN_GROUND", "T:CHECK_AIRMAN_FLIGHT", "T:CHECK_AIRMAN_FAA", "T:CHECK_AIRMAN_OBSERVED"]
+};
+
+async function seedRequirements() {
+    for (const program of PROGRAMS) {
+        await prisma.trainingProgram.upsert({ where: { code: program.code }, update: {}, create: program });
+    }
+    for (const [code, items] of Object.entries(REQUIREMENTS)) {
+        const qualification = await prisma.qualification.findUnique({ where: { code } });
+        if (!qualification) continue;
+        // Only seed a qualification that has no requirements yet, so edits made in the app stay.
+        if (await prisma.qualificationRequirement.count({ where: { qualificationId: qualification.id } })) continue;
+        for (const item of items) {
+            const [kind, ref] = [item.slice(0, 1), item.slice(2)];
+            await prisma.qualificationRequirement.create({
+                data: { qualificationId: qualification.id, requirementType: kind === "Q" ? "QUALIFICATION" : "TRAINING", requirementRef: ref }
+            });
+        }
     }
 }
 

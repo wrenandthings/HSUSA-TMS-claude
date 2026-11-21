@@ -4,6 +4,41 @@ The Word documents in this folder are the original baseline. When the owner
 decides something that differs from them, it is recorded here, newest first.
 Each entry says which document it changes.
 
+## 2026-11-21: Qualifications are built from requirements; people record their own training
+
+**Changes:** Qualification Rules Matrix v1.0 and Qualification Approval
+Matrix v1.0 (how status is worked out and who records training), and the
+Master Baseline's scope lock on qualification logic, which needs the
+owner's documented approval. This entry is that record.
+
+**Decisions (owner, 2026-11-21, in chat):**
+1. "the 'view' should be the same, but the requirements will be different
+   based on what qualifications they need to maintain": every user sees
+   the same app; what each person must do comes from their qualifications.
+2. A qualification is built from requirements (check rides, courses,
+   recurrent training), each with its own renewal period. It is current
+   only while all its requirements are current, and expires when the first
+   one expires (matches the Rules Matrix: "Any required event expired =
+   PIC EXPIRED").
+3. Quizzes are practice only; passing a quiz never counts toward a
+   qualification.
+4. Completed training is recorded by the person themselves and counts
+   only after it is approved.
+
+**How the app applies them (Finch, cheap to change):**
+- Approval: anyone with one of the six qualification-manager roles
+  (Administrator, Training Manager, Director of Operations, Chief Pilot,
+  Maintenance Manager, Quality Control) may approve or reject. The
+  Approval Matrix's per-qualification authorities (for example, the
+  Director of Operations approves PIC) can narrow this later.
+- A qualification may also need another qualification to be current
+  (IFR needs PIC), as the Rules Matrix says.
+- Grace window from the Rules Matrix: training done in the month before
+  or after the due month counts as done in the due month, so the next due
+  date does not move earlier or later.
+- Requirements are seeded from the Rules Matrix and the owner's
+  Qualification requirements doc; the Training Manager can change them.
+
 ## 2026-11-20: Own HeliService styling instead of Material UI
 
 **Changes:** Implementation Plan v1.0 (Project Objective, React Architecture)
