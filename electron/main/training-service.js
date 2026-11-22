@@ -280,7 +280,17 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
                 }
             }
         }
-        return out;
+        // One row per training: a check needed by PIC and IFR shows once.
+        const merged = new Map();
+        for (const a of out) {
+            const seen = merged.get(a.programCode);
+            if (!seen) merged.set(a.programCode, { ...a, qualifications: [a.qualificationCode] });
+            else if (!seen.qualifications.includes(a.qualificationCode)) {
+                seen.qualifications.push(a.qualificationCode);
+                seen.qualification = `${seen.qualification}, ${a.qualification}`;
+            }
+        }
+        return [...merged.values()];
     }
 
     const LEVEL_ORDER = { EXPIRED: 0, GRACE: 1, MISSING: 2, DUE_7: 3, DUE_30: 4, DUE_SOON: 5 };

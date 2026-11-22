@@ -179,6 +179,7 @@ describe("alerts", () => {
         expect(mine.windowDays).toBe(90);
         // 135.297 is not approved yet, so IFR shows it as missing and waiting.
         expect(mine.mine.find((a: any) => a.programCode === "135.297")).toMatchObject({ level: "MISSING", waiting: true, qualificationCode: "IFR" });
+        expect(mine.mine.filter((a: any) => a.programCode === "135.293")).toHaveLength(0); // approved and current
         const team = await training.alerts(manager);
         expect(team.team.some((a: any) => a.person.username === "pilot1")).toBe(true);
     });
@@ -193,5 +194,18 @@ describe("alerts", () => {
         expect(later.windowDays).toBe(30);
         expect(due(later.mine)).toBeUndefined();
         await db.prisma.configuration.deleteMany({ where: { key: { in: ["Alert90Days", "Alert60Days"] } } });
+    });
+});
+
+describe("alert rows", () => {
+    it("show a training needed by two qualifications once", async () => {
+        const other = (await db.prisma.user.create({ data: { username: "pilot2", passwordHash: "x", firstName: "Sam", lastName: "Second", status: "ACTIVE" } })).id;
+        for (const code of ["PIC", "IFR"]) {
+            const q = await db.prisma.qualification.findUniqueOrThrow({ where: { code } });
+            await db.prisma.userQualification.create({ data: { userId: other, qualificationId: q.id } });
+        }
+        const rows = (await training.alerts(other)).mine.filter((a: any) => a.programCode === "135.293");
+        expect(rows).toHaveLength(1);
+        expect(rows[0].qualifications.sort()).toEqual(["IFR", "PIC"]);
     });
 });
