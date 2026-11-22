@@ -43,13 +43,16 @@ function createFlashcardService(prisma, { random = Math.random, now = () => new 
 
     // The latest rating for each question this person has reviewed.
     async function latest(userId, ids) {
+        // Filter by person only, then by question here: a list of thousands of
+        // question ids plus orderBy crashes Prisma's SQLite engine (2026-11-21).
         const rows = await prisma.flashcardHistory.findMany({
-            where: { userId, ...(ids ? { questionId: { in: ids } } : {}) },
+            where: { userId },
             select: { questionId: true, status: true, reviewedAt: true },
             orderBy: { reviewedAt: "asc" }
         });
+        const wanted = ids ? new Set(ids) : null;
         const map = new Map();
-        for (const r of rows) map.set(r.questionId, r);
+        for (const r of rows) if (!wanted || wanted.has(r.questionId)) map.set(r.questionId, r);
         return map;
     }
 
@@ -81,11 +84,12 @@ function createFlashcardService(prisma, { random = Math.random, now = () => new 
             if (mode === "WEAK_AREA") {
                 // Cards last rated Missed or Unsure, and questions last answered wrong in a quiz.
                 const quizAnswers = await prisma.quizAnswer.findMany({
-                    where: { questionId: { in: candidates }, session: { userId } },
+                    where: { session: { userId } },
                     select: { questionId: true, correct: true }, orderBy: { answeredAt: "asc" }
                 });
+                const inChoice = new Set(candidates);
                 const quizLast = new Map();
-                for (const a of quizAnswers) quizLast.set(a.questionId, a.correct);
+                for (const a of quizAnswers) if (inChoice.has(a.questionId)) quizLast.set(a.questionId, a.correct);
                 const rank = (id) => {
                     const s = last.get(id)?.status;
                     if (s === "MISSED") return 0;

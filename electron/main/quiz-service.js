@@ -76,11 +76,14 @@ function createQuizService(prisma, { random = Math.random, now = () => new Date(
         const ids = candidates.map((q) => q.id);
         if (type === "RANDOM" || type === "CERTIFICATION") return [shuffled(ids, random).slice(0, count), null];
 
-        const answers = await prisma.quizAnswer.findMany({
-            where: { questionId: { in: ids }, session: { userId } },
+        // Filter by person only, then by question here: a list of thousands of
+        // question ids plus orderBy crashes Prisma's SQLite engine (2026-11-21).
+        const inChoice = new Set(ids);
+        const answers = (await prisma.quizAnswer.findMany({
+            where: { session: { userId } },
             select: { questionId: true, correct: true, answeredAt: true },
             orderBy: { answeredAt: "asc" }
-        });
+        })).filter((a) => inChoice.has(a.questionId));
 
         if (type === "UNSEEN") {
             const seen = new Set(answers.map((a) => a.questionId));
