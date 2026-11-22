@@ -52,7 +52,7 @@ describe("seed data from the Seed Data Specification", () => {
 
     it("creates the manuals the question banks come from, active", async () => {
         const docs = await db.prisma.document.findMany({ orderBy: { code: "asc" } });
-        expect(docs.map(d => [d.code, d.active])).toEqual([["AMP", true], ["AMPI", true], ["GOM", true], ["HOIST", true], ["HUMS", true], ["OM-A", true], ["OM-B", true], ["OM-C", true], ["OM-D", true], ["SAR-HEC", true]]);
+        expect(docs.map(d => [d.code, d.active])).toEqual([["AMP", true], ["AMPI", true], ["DISPATCH", true], ["GOM", true], ["HOIST", true], ["HUMS", true], ["MEL", true], ["OM-A", true], ["OM-B", true], ["OM-C", true], ["OM-D", true], ["SAR-HEC", true], ["SMS-A", true]]);
     });
 
     it("creates every configuration value", async () => {

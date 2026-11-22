@@ -33,9 +33,9 @@ afterAll(async () => { await db.cleanup(); });
 const call = (channel: string, input?: unknown) => handlers.get(channel)!({}, input);
 
 describe("seeded subjects", () => {
-    it("are the eleven codes from the Seed Data Specification, plus OMD, SAR, HOIST and GROUND_OPS (2026-11-21)", async () => {
+    it("are the eleven codes from the Seed Data Specification, plus OMD, SAR, HOIST, GROUND_OPS, DISPATCH and SMS (2026-11-21/22)", async () => {
         const codes = (await db.prisma.subject.findMany({ orderBy: { code: "asc" } })).map(s => s.code);
-        expect(codes).toEqual(["AW169", "COMM", "CRM", "GROUND_OPS", "HAA", "HAZMAT", "HOIST", "MAINT", "MGMT", "NVG", "OFFSHORE_IFR", "OMA", "OMD", "PILOT", "SAR"]);
+        expect(codes).toEqual(["AW169", "COMM", "CRM", "DISPATCH", "GROUND_OPS", "HAA", "HAZMAT", "HOIST", "MAINT", "MGMT", "NVG", "OFFSHORE_IFR", "OMA", "OMD", "PILOT", "SAR", "SMS"]);
     });
 });
 

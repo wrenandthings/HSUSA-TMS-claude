@@ -192,7 +192,11 @@ const DOCUMENTS = [
     { code: "SAR-HEC", title: "SAR/HEC Manual - Quonset Operations" },
     { code: "HOIST", title: "Helicopter Hoist SOP and Rotorcraft Load Combination Flight Manual (RLCFM)" },
     { code: "GOM", title: "Ground Operations Manual (US)" },
-    { code: "HUMS", title: "HUMS Manual" }
+    { code: "HUMS", title: "HUMS Manual" },
+    // Quail, 2026-11-21/22: Dispatch, SMS-A and MEL banks.
+    { code: "DISPATCH", title: "Dispatch Manual" },
+    { code: "SMS-A", title: "Safety Management System Policy Manual (SMS-A)" },
+    { code: "MEL", title: "Fleet Minimum Equipment List (MEL) AW169" }
 ];
 
 async function seedDocuments() {
@@ -267,7 +271,10 @@ const SUBJECTS = [
     { code: "SAR", subjectName: "Search and Rescue" },
     { code: "HOIST", subjectName: "Hoist Operations (HHO)" },
     // Quail, 2026-11-21: Ground Operations Manual bank.
-    { code: "GROUND_OPS", subjectName: "Ground Operations" }
+    { code: "GROUND_OPS", subjectName: "Ground Operations" },
+    // Quail, 2026-11-21/22: Dispatch and SMS-A banks.
+    { code: "DISPATCH", subjectName: "Dispatch / Operational Control" },
+    { code: "SMS", subjectName: "Safety Management System" }
 ];
 
 async function seedSubjects() {

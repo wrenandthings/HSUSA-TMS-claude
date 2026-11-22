@@ -61,10 +61,10 @@ describe("first start of an installed copy", () => {
         const result = await prepareDatabase(fresh, options);
         expect(failures).toEqual([]);
         expect(result.applied).toEqual([]);
-        expect(result.imported).toBeGreaterThan(2900); // nine banks, 2,940 questions
+        expect(result.imported).toBe(3275); // twelve banks
         expect((await prepareDatabase(fresh, options)).imported).toBe(0);
         const codes = (await fresh.document.findMany({ where: { questions: { some: {} } }, select: { code: true } })).map((d) => d.code).sort();
-        expect(codes).toEqual(expect.arrayContaining(["GOM", "HOIST", "HUMS", "SAR-HEC"]));
+        expect(codes).toEqual(expect.arrayContaining(["DISPATCH", "GOM", "HOIST", "HUMS", "MEL", "SAR-HEC", "SMS-A"]));
         // A changed file is imported again; unchanged files are skipped.
         await fresh.configuration.update({ where: { key: "BundledBank:HUMS_question_bank.csv" }, data: { value: "old" } });
         expect((await prepareDatabase(fresh, options)).imported).toBe(0); // same questions: updated, none created
