@@ -5,6 +5,8 @@
 const { trainingStatus, combine } = require("./requirement-status");
 
 const MANAGER_ROLES = ["Administrator", "Training_Manager", "Director_of_Operations", "Chief_Pilot", "Maintenance_Manager", "Quality_Control"];
+// Who may change what each qualification needs (DECISIONS.md 2026-11-21).
+const REQUIREMENT_EDITORS = ["Administrator", "Training_Manager"];
 const fail = (message) => ({ success: false, message });
 
 // <input type="date"> gives "YYYY-MM-DD"; store UTC midnight of that day.
@@ -20,23 +22,29 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
         return Boolean(await prisma.userRole.findFirst({ where: { userId, role: { roleName: { in: MANAGER_ROLES } } } }));
     }
 
+    async function canEditRequirements(userId) {
+        return Boolean(await prisma.userRole.findFirst({ where: { userId, role: { roleName: { in: REQUIREMENT_EDITORS } } } }));
+    }
+
     async function programs() {
         return prisma.trainingProgram.findMany({ where: { active: true }, orderBy: [{ category: "asc" }, { name: "asc" }] });
     }
 
     // Everything needed to work out one person's qualifications in memory.
     async function context(userId) {
-        const [qualifications, allPrograms, records, assignments] = await Promise.all([
+        const [qualifications, allPrograms, records, assignments, waiting] = await Promise.all([
             prisma.qualification.findMany({ where: { hidden: false }, include: { requirements: true } }),
             prisma.trainingProgram.findMany(),
             prisma.userTrainingRecord.findMany({ where: { userId, approval: "APPROVED", result: { in: ["PASS", "WAIVED"] } } }),
-            prisma.userQualification.findMany({ where: { userId, status: "ACTIVE" } })
+            prisma.userQualification.findMany({ where: { userId, status: "ACTIVE" } }),
+            prisma.userTrainingRecord.findMany({ where: { userId, approval: "PENDING" }, select: { programId: true } })
         ]);
         return {
             qualifications: new Map(qualifications.map((q) => [q.code, q])),
             programs: new Map(allPrograms.map((p) => [p.code, p])),
             records,
-            assignments: new Map(assignments.map((a) => [a.qualificationId, a]))
+            assignments: new Map(assignments.map((a) => [a.qualificationId, a])),
+            waiting: new Set(waiting.map((r) => r.programId))
         };
     }
 
@@ -55,7 +63,7 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
             const program = ctx.programs.get(req.requirementRef);
             if (!program) return { type: "TRAINING", code: req.requirementRef, name: req.requirementRef, status: "MISSING", dueDate: null, graceEnd: null };
             const mine = ctx.records.filter((r) => r.programId === program.id);
-            return { type: "TRAINING", code: program.code, name: program.name, programId: program.id, renewalMonths: program.renewalMonths, ...trainingStatus(program, mine, today) };
+            return { type: "TRAINING", code: program.code, name: program.name, programId: program.id, renewalMonths: program.renewalMonths, waiting: ctx.waiting.has(program.id), ...trainingStatus(program, mine, today) };
         });
         const overall = combine(items);
         const assignment = ctx.assignments.get(qualification.id);
@@ -80,9 +88,11 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
             where: { userId }, include: { program: true, reviewer: { select: { username: true } } }, orderBy: { submittedAt: "desc" }, take: 50
         });
         const canApprove = await isManager(userId);
+        const canEdit = await canEditRequirements(userId);
         return {
             success: true,
             canApprove,
+            canEditRequirements: canEdit,
             pendingToReview: canApprove ? await prisma.userTrainingRecord.count({ where: { approval: "PENDING", userId: { not: userId } } }) : 0,
             qualifications: mine.map((q) => evaluate(ctx, q.code, today)),
             records: records.map((r) => ({
@@ -164,7 +174,83 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
         return evaluate(await context(userId), code, now());
     }
 
-    return { programs, myTraining, submit, withdraw, pending, review, qualificationFor, isManager };
+    // The requirements editor (Training Manager and Administrator).
+    async function requirementsEditor(userId) {
+        if (!(await canEditRequirements(userId))) return fail("Only a Training Manager or Administrator can change requirements.");
+        const [qualifications, allPrograms] = await Promise.all([
+            prisma.qualification.findMany({ where: { hidden: false }, include: { requirements: true }, orderBy: { code: "asc" } }),
+            prisma.trainingProgram.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] })
+        ]);
+        return {
+            success: true,
+            qualifications: qualifications.map((q) => ({
+                id: q.id, code: q.code, name: q.name,
+                requirements: q.requirements.map((r) => ({ type: r.requirementType, ref: r.requirementRef }))
+            })),
+            programs: allPrograms
+        };
+    }
+
+    // True if `code` needs `target`, directly or through other qualifications.
+    function reaches(byCode, code, target, seen = new Set()) {
+        if (code === target) return true;
+        if (seen.has(code)) return false;
+        seen.add(code);
+        return (byCode.get(code) ?? []).some((ref) => reaches(byCode, ref, target, seen));
+    }
+
+    async function setRequirements(userId, qualificationId, items) {
+        if (!(await canEditRequirements(userId))) return fail("Only a Training Manager or Administrator can change requirements.");
+        const qualification = await prisma.qualification.findUnique({ where: { id: String(qualificationId ?? "") }, include: { requirements: true } });
+        if (!qualification) return fail("Qualification not found.");
+        const list = Array.isArray(items) ? items : [];
+        const [allPrograms, allQualifications] = await Promise.all([
+            prisma.trainingProgram.findMany({ select: { code: true } }),
+            prisma.qualification.findMany({ include: { requirements: true } })
+        ]);
+        const programCodes = new Set(allPrograms.map((p) => p.code));
+        const byCode = new Map(allQualifications.map((q) => [q.code, q.requirements.filter((r) => r.requirementType === "QUALIFICATION").map((r) => r.requirementRef)]));
+        const clean = [];
+        const seen = new Set();
+        for (const item of list) {
+            const type = item?.type === "QUALIFICATION" ? "QUALIFICATION" : item?.type === "TRAINING" ? "TRAINING" : null;
+            const ref = String(item?.ref ?? "");
+            if (!type) return fail("Unknown requirement type.");
+            if (type === "TRAINING" && !programCodes.has(ref)) return fail(`Unknown training: ${ref}.`);
+            if (type === "QUALIFICATION") {
+                if (!byCode.has(ref)) return fail(`Unknown qualification: ${ref}.`);
+                if (reaches(byCode, ref, qualification.code)) return fail(`${ref} already needs ${qualification.code}, so ${qualification.code} cannot need ${ref}.`);
+            }
+            const key = `${type}:${ref}`;
+            if (!seen.has(key)) { seen.add(key); clean.push({ requirementType: type, requirementRef: ref }); }
+        }
+        const before = qualification.requirements.map((r) => `${r.requirementType}:${r.requirementRef}`).sort();
+        await prisma.$transaction([
+            prisma.qualificationRequirement.deleteMany({ where: { qualificationId: qualification.id } }),
+            prisma.qualificationRequirement.createMany({ data: clean.map((c) => ({ ...c, qualificationId: qualification.id })) }),
+            prisma.auditLog.create({ data: { userId, entity: "Qualification", entityId: qualification.id, action: "REQUIREMENTS_CHANGED", oldValue: JSON.stringify(before), newValue: JSON.stringify([...seen].sort()) } })
+        ]);
+        return { success: true, message: `Saved requirements for ${qualification.name}.` };
+    }
+
+    // How often a training must be repeated (blank = once).
+    async function setRenewal(userId, programId, renewalMonths) {
+        if (!(await canEditRequirements(userId))) return fail("Only a Training Manager or Administrator can change requirements.");
+        const program = await prisma.trainingProgram.findUnique({ where: { id: String(programId ?? "") } });
+        if (!program) return fail("Training not found.");
+        let months = null;
+        if (renewalMonths !== null && renewalMonths !== "" && renewalMonths !== undefined) {
+            months = Number(renewalMonths);
+            if (!Number.isInteger(months) || months < 1 || months > 120) return fail("Enter whole months from 1 to 120, or leave it blank for once.");
+        }
+        await prisma.$transaction([
+            prisma.trainingProgram.update({ where: { id: program.id }, data: { renewalMonths: months } }),
+            prisma.auditLog.create({ data: { userId, entity: "TrainingProgram", entityId: program.id, action: "RENEWAL_CHANGED", oldValue: JSON.stringify(program.renewalMonths), newValue: JSON.stringify(months) } })
+        ]);
+        return { success: true, message: `${program.name}: ${months ? `every ${months} months` : "once"}.` };
+    }
+
+    return { requirementsEditor, setRequirements, setRenewal, canEditRequirements, programs, myTraining, submit, withdraw, pending, review, qualificationFor, isManager };
 }
 
 module.exports = { createTrainingService, parseDay };

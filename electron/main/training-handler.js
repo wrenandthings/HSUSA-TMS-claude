@@ -25,6 +25,9 @@ function registerTrainingHandlers() {
     handle("training-submit", (userId, input) => training.submit(userId, input));
     handle("training-withdraw", (userId, input) => training.withdraw(userId, input.recordId));
     handle("training-pending", (userId) => training.pending(userId));
+    handle("requirements-get", (userId) => training.requirementsEditor(userId));
+    handle("requirements-set", (userId, input) => training.setRequirements(userId, input.qualificationId, input.items));
+    handle("training-renewal-set", (userId, input) => training.setRenewal(userId, input.programId, input.renewalMonths));
     handle("training-review", (userId, input) => training.review(userId, input.recordId, Boolean(input.approve), input.note));
 }
 

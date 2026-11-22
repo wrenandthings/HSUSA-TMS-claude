@@ -62,7 +62,7 @@ export default function MyTrainingPage() {
                                                 {item.type === "TRAINING" && item.renewalMonths == null && <span className="muted"> (once)</span>}
                                             </td>
                                             <td>
-                                                <StatusBadge status={item.status} />
+                                                {item.waiting && item.status !== "CURRENT" ? <span className="badge warn">Waiting for approval</span> : <StatusBadge status={item.status} />}
                                                 {item.inGrace && <div className="muted" style={{ fontSize: "13px" }}>In grace until {day(item.graceEnd)}</div>}
                                             </td>
                                             <td>{day(item.lastCompleted)}</td>

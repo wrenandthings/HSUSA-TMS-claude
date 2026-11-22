@@ -9,14 +9,16 @@ import SettingsPage from "../modules/settings/SettingsPage";
 import QuizzesPage from "../modules/quizzes/QuizzesPage";
 import MyTrainingPage from "../modules/training/MyTrainingPage";
 import ApprovalsPage from "../modules/training/ApprovalsPage";
+import RequirementsPage from "../modules/training/RequirementsPage";
 
-type Section = "home" | "training" | "approvals" | "quizzes" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
+type Section = "home" | "training" | "approvals" | "requirements" | "quizzes" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
 
 // The sidebar, in the order of the approved design (2026-11-20).
 const SECTIONS: { id: Section; label: string; description: string }[] = [
     { id: "home", label: "Home", description: "" },
     { id: "training", label: "My training", description: "What each of your qualifications needs, when it is due, and your recorded training." },
     { id: "approvals", label: "Approvals", description: "Training people have recorded, waiting for a manager to approve." },
+    { id: "requirements", label: "Requirements", description: "What each qualification needs and how often each training repeats." },
     { id: "quizzes", label: "Quizzes", description: "Practice by subject or manual, find your weak areas, or take a certification quiz." },
     { id: "qualifications", label: "Qualifications", description: "Who holds what, when it expires, and the history of every change." },
     { id: "questions", label: "Question Bank", description: "Questions by subject, with answers and manual references. Import banks from CSV." },
@@ -39,14 +41,16 @@ export default function App() {
     const goHome = () => open("home");
     // Managers see Approvals, with a count of records waiting.
     const [canApprove, setCanApprove] = useState(false);
+    const [canEditRequirements, setCanEditRequirements] = useState(false);
     const [waiting, setWaiting] = useState(0);
     async function refreshTraining() {
         const result = await window.hsusa.myTraining?.();
         setCanApprove(Boolean(result?.canApprove));
+        setCanEditRequirements(Boolean(result?.canEditRequirements));
         setWaiting(result?.pendingToReview ?? 0);
     }
     useEffect(() => { if (loggedIn) void refreshTraining(); }, [loggedIn, section]);
-    const visible = SECTIONS.filter((item) => item.id !== "approvals" || canApprove);
+    const visible = SECTIONS.filter((item) => (item.id !== "approvals" || canApprove) && (item.id !== "requirements" || canEditRequirements));
 
     function open(next: Section) {
         setSection(next);
@@ -80,6 +84,7 @@ export default function App() {
     else if (section === "questions") page = <QuestionListPage key={visit} onBack={goHome} />;
     else if (section === "qualifications") page = <QualificationListPage key={visit} onBack={goHome} />;
     else if (section === "quizzes") page = <QuizzesPage key={visit} />;
+    else if (section === "requirements") page = <RequirementsPage key={visit} />;
     else if (section === "training") page = <MyTrainingPage key={visit} />;
     else if (section === "approvals") page = <ApprovalsPage key={visit} onChanged={() => void refreshTraining()} />;
     else if (section === "settings") page = <SettingsPage key={visit} onTimeoutChanged={setTimeoutMinutes} />;

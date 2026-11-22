@@ -118,3 +118,42 @@ describe("qualification status from requirements", () => {
         await db.prisma.userQualification.updateMany({ where: { userId: pilot, qualificationId: q.id }, data: { suspended: false } });
     });
 });
+
+describe("the requirements editor", () => {
+    it("is only for a Training Manager or Administrator", async () => {
+        expect(await training.requirementsEditor(pilot)).toEqual({ success: false, message: "Only a Training Manager or Administrator can change requirements." });
+        const editor = await training.requirementsEditor(manager);
+        expect(editor.success).toBe(true);
+        expect(editor.qualifications.find((q: any) => q.code === "HUET").requirements).toEqual([{ type: "TRAINING", ref: "HUET_COURSE" }]);
+    });
+
+    it("saves a new list, drops duplicates and audits the change", async () => {
+        const huet = await db.prisma.qualification.findUniqueOrThrow({ where: { code: "HUET" } });
+        const items = [{ type: "TRAINING", ref: "HUET_COURSE" }, { type: "QUALIFICATION", ref: "CRM" }, { type: "TRAINING", ref: "HUET_COURSE" }];
+        expect(await training.setRequirements(manager, huet.id, items)).toEqual({ success: true, message: "Saved requirements for HUET." });
+        expect(await db.prisma.qualificationRequirement.count({ where: { qualificationId: huet.id } })).toBe(2);
+        expect(await db.prisma.auditLog.count({ where: { action: "REQUIREMENTS_CHANGED", entityId: huet.id } })).toBe(1);
+    });
+
+    it("refuses unknown items and a loop between qualifications", async () => {
+        const pic = await db.prisma.qualification.findUniqueOrThrow({ where: { code: "PIC" } });
+        expect((await training.setRequirements(manager, pic.id, [{ type: "TRAINING", ref: "NOPE" }])).message).toBe("Unknown training: NOPE.");
+        expect((await training.setRequirements(manager, pic.id, [{ type: "QUALIFICATION", ref: "IFR" }])).message).toBe("IFR already needs PIC, so PIC cannot need IFR.");
+        expect((await training.setRequirements(manager, pic.id, [{ type: "QUALIFICATION", ref: "PIC" }])).message).toBe("PIC already needs PIC, so PIC cannot need PIC.");
+    });
+
+    it("changes how often a training repeats", async () => {
+        const id = await program("COMPANY_RECURRENT");
+        expect((await training.setRenewal(manager, id, "24")).success).toBe(true);
+        expect((await db.prisma.trainingProgram.findUniqueOrThrow({ where: { id } })).renewalMonths).toBe(24);
+        expect((await training.setRenewal(manager, id, "")).message).toBe("Company recurrent training: once.");
+        expect((await training.setRenewal(manager, id, "0")).success).toBe(false);
+        await training.setRenewal(manager, id, 12);
+    });
+
+    it("shows a pending record as waiting on the requirement", async () => {
+        await record("135.297", "2026-04-02");
+        const item = (await statusOf("IFR")).items.find((i: any) => i.code === "135.297");
+        expect(item).toMatchObject({ status: "MISSING", waiting: true });
+    });
+});
