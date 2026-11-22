@@ -27,6 +27,8 @@ model User {
   auditLogs               AuditLog[]
   backups                 Backup[]
   quizSessions            QuizSession[]
+  flashcardSessions       FlashcardSession[]
+  flashcardHistory        FlashcardHistory[]
   trainingRecords         UserTrainingRecord[] @relation("TrainingRecordUser")
   reviewedTrainingRecords UserTrainingRecord[] @relation("TrainingRecordReviewer")
 }
@@ -144,6 +146,7 @@ model Question {
 
   quizQuestions QuizQuestion[]
   quizAnswers   QuizAnswer[]
+  flashcards    FlashcardHistory[]
 
   @@index([subjectId])
   @@index([documentId])
@@ -355,4 +358,43 @@ model UserTrainingRecord {
 
   @@index([userId, programId])
   @@index([approval])
+}
+
+// Flashcards (Phase 5; UI spec FLASH-001/002; Prisma Schema spec v1.0, with a
+// mode, a name and the chosen cards added so a session can be continued).
+enum FlashcardState {
+  KNOW_IT
+  UNSURE
+  MISSED
+}
+
+model FlashcardSession {
+  id          String             @id @default(uuid())
+  userId      String
+  mode        String             // SUBJECT, WEAK_AREA or CUSTOM
+  name        String
+  subjectId   String?
+  documentId  String?
+  questionIds String             // JSON array of question ids, in card order
+  startedAt   DateTime           @default(now())
+  completedAt DateTime?
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history     FlashcardHistory[]
+
+  @@index([userId])
+}
+
+model FlashcardHistory {
+  id         String            @id @default(uuid())
+  userId     String
+  questionId String
+  sessionId  String?
+  status     FlashcardState
+  reviewedAt DateTime          @default(now())
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   Question          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  session    FlashcardSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, questionId])
+  @@index([sessionId])
 }

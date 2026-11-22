@@ -11,8 +11,9 @@ import MyTrainingPage from "../modules/training/MyTrainingPage";
 import ApprovalsPage from "../modules/training/ApprovalsPage";
 import RequirementsPage from "../modules/training/RequirementsPage";
 import AlertsPanel from "../modules/training/AlertsPanel";
+import FlashcardsPage from "../modules/flashcards/FlashcardsPage";
 
-type Section = "home" | "training" | "approvals" | "requirements" | "quizzes" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
+type Section = "home" | "training" | "approvals" | "requirements" | "quizzes" | "flashcards" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
 
 // The sidebar, in the order of the approved design (2026-11-20).
 const SECTIONS: { id: Section; label: string; description: string }[] = [
@@ -21,6 +22,7 @@ const SECTIONS: { id: Section; label: string; description: string }[] = [
     { id: "approvals", label: "Approvals", description: "Training people have recorded, waiting for a manager to approve." },
     { id: "requirements", label: "Requirements", description: "What each qualification needs and how often each training repeats." },
     { id: "quizzes", label: "Quizzes", description: "Practice by subject or manual, find your weak areas, or take a certification quiz." },
+    { id: "flashcards", label: "Flashcards", description: "Study question cards by subject or manual, or your weak areas, and see what you know." },
     { id: "qualifications", label: "Qualifications", description: "Who holds what, when it expires, and the history of every change." },
     { id: "questions", label: "Question Bank", description: "Questions by subject, with answers and manual references. Import banks from CSV." },
     { id: "subjects", label: "Subjects", description: "The subjects questions belong to, such as MAINT or OMA." },
@@ -42,6 +44,8 @@ export default function App() {
     const goHome = () => open("home");
     // Managers see Approvals, with a count of records waiting.
     const [canApprove, setCanApprove] = useState(false);
+    // A flashcard set made from a quiz's results opens on the Flashcards page.
+    const [flashcardStart, setFlashcardStart] = useState<{ id: string; note: string } | null>(null);
     const [canEditRequirements, setCanEditRequirements] = useState(false);
     const [waiting, setWaiting] = useState(0);
     async function refreshTraining() {
@@ -54,6 +58,7 @@ export default function App() {
     const visible = SECTIONS.filter((item) => (item.id !== "approvals" || canApprove) && (item.id !== "requirements" || canEditRequirements));
 
     function open(next: Section) {
+        setFlashcardStart(null);
         setSection(next);
         setVisit((count) => count + 1);
     }
@@ -84,7 +89,8 @@ export default function App() {
     else if (section === "subjects") page = <SubjectListPage key={visit} onBack={goHome} />;
     else if (section === "questions") page = <QuestionListPage key={visit} onBack={goHome} />;
     else if (section === "qualifications") page = <QualificationListPage key={visit} onBack={goHome} />;
-    else if (section === "quizzes") page = <QuizzesPage key={visit} />;
+    else if (section === "quizzes") page = <QuizzesPage key={visit} onOpenFlashcards={(id, note) => { open("flashcards"); setFlashcardStart({ id, note }); }} />;
+    else if (section === "flashcards") page = <FlashcardsPage key={visit} initialSessionId={flashcardStart?.id} initialNote={flashcardStart?.note} />;
     else if (section === "requirements") page = <RequirementsPage key={visit} />;
     else if (section === "training") page = <MyTrainingPage key={visit} />;
     else if (section === "approvals") page = <ApprovalsPage key={visit} onChanged={() => void refreshTraining()} />;

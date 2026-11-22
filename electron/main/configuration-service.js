@@ -18,6 +18,7 @@ const SETTINGS = [
     { key: "ReadinessQualificationWeight", group: "Readiness", label: "Weight of qualifications", ...whole(0, 100, "%"), fallback: "30" },
     { key: "CoverageThreshold", group: "Readiness", label: "Show knowledge scores once this much of a subject is covered", ...whole(0, 100, "%"), fallback: "50" },
     { key: "QuizPassMarkPercent", group: "Quizzes", label: "Pass mark", ...whole(50, 100, "%"), fallback: "80" },
+    { key: "FlashcardCount", group: "Quizzes", label: "Cards in a flashcard session", ...whole(5, 100, "cards"), fallback: "20" },
     { key: "QuizQuestionCount", group: "Quizzes", label: "Questions in a practice quiz", ...whole(5, 100, "questions"), fallback: "20" },
     { key: "CertificationQuestionCount", group: "Quizzes", label: "Questions in a certification quiz", ...whole(10, 200, "questions"), fallback: "50" },
     { key: "BackupRetentionDays", group: "Records", label: "Keep backups for", ...whole(1, 3650, "days"), fallback: "90" },

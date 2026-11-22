@@ -24,12 +24,12 @@ interface Quiz {
     questionCount: number; answeredCount: number; correctCount: number; items: Item[];
 }
 
-export default function QuizzesPage() {
+export default function QuizzesPage(props: { onOpenFlashcards?: (sessionId: string, note: string) => void }) {
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [note, setNote] = useState("");
 
     if (sessionId) {
-        return <QuizRunner sessionId={sessionId} note={note} onLeave={() => { setSessionId(null); setNote(""); }} onStart={(id, n) => { setSessionId(id); setNote(n); }} />;
+        return <QuizRunner sessionId={sessionId} note={note} onLeave={() => { setSessionId(null); setNote(""); }} onStart={(id, n) => { setSessionId(id); setNote(n); }} onOpenFlashcards={props.onOpenFlashcards} />;
     }
     return <QuizHome onOpen={(id, n) => { setSessionId(id); setNote(n ?? ""); }} />;
 }
@@ -146,7 +146,7 @@ function QuizHome(props: { onOpen: (sessionId: string, note?: string) => void })
     );
 }
 
-function QuizRunner(props: { sessionId: string; note: string; onLeave: () => void; onStart: (sessionId: string, note: string) => void }) {
+function QuizRunner(props: { sessionId: string; note: string; onLeave: () => void; onStart: (sessionId: string, note: string) => void; onOpenFlashcards?: (sessionId: string, note: string) => void }) {
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [index, setIndex] = useState(0);
     const [problem, setProblem] = useState("");
@@ -178,7 +178,7 @@ function QuizRunner(props: { sessionId: string; note: string; onLeave: () => voi
     if (!quiz) return <div className="page">{problem ? <p className="message-error">{problem}</p> : <p className="muted">Loading…</p>}</div>;
 
     if (quiz.completed && !reviewing) {
-        return <QuizResults quiz={quiz} onReview={() => { setReviewing(true); setIndex(0); }} onLeave={props.onLeave} onStart={props.onStart} />;
+        return <QuizResults quiz={quiz} onReview={() => { setReviewing(true); setIndex(0); }} onLeave={props.onLeave} onStart={props.onStart} onOpenFlashcards={props.onOpenFlashcards} />;
     }
 
     const item = quiz.items[index];
@@ -310,10 +310,16 @@ function QuizRunner(props: { sessionId: string; note: string; onLeave: () => voi
     );
 }
 
-function QuizResults(props: { quiz: Quiz; onReview: () => void; onLeave: () => void; onStart: (sessionId: string, note: string) => void }) {
+function QuizResults(props: { quiz: Quiz; onReview: () => void; onLeave: () => void; onStart: (sessionId: string, note: string) => void; onOpenFlashcards?: (sessionId: string, note: string) => void }) {
     const { quiz } = props;
     const [problem, setProblem] = useState("");
     const wrong = quiz.questionCount - quiz.correctCount;
+
+    async function makeFlashcards() {
+        const result = await window.hsusa.startFlashcards({ mode: "CUSTOM", quizSessionId: quiz.id, count: 200 });
+        if (result?.success) props.onOpenFlashcards?.(result.sessionId, "");
+        else setProblem(result?.message ?? "Unable to make flashcards.");
+    }
 
     async function retake() {
         const result = await window.hsusa.startQuiz({
@@ -344,6 +350,7 @@ function QuizResults(props: { quiz: Quiz; onReview: () => void; onLeave: () => v
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                 <button className="primary" onClick={props.onReview}>Review answers</button>
                 <button onClick={() => void retake()}>Retake{quiz.type === "RANDOM" || quiz.type === "CERTIFICATION" ? " with new questions" : ""}</button>
+                {quiz.answeredCount > quiz.correctCount && props.onOpenFlashcards && <button onClick={() => void makeFlashcards()}>Make flashcards of missed questions</button>}
                 <button onClick={props.onLeave}>Back to quizzes</button>
             </div>
             {wrong > 0 && quiz.practice && (
