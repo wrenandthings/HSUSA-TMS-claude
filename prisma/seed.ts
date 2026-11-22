@@ -1,7 +1,8 @@
 const { PrismaClient } = require("@prisma/client");
 const { hashPassword } = require("../electron/main/passwords");
 
-const prisma = new PrismaClient();
+// Set by seed(); the installed app passes its own client (electron/main/first-run.js).
+let prisma: any;
 
 async function main() {
 
@@ -342,8 +343,18 @@ async function seedRequirements() {
     }
 }
 
-main()
-    .catch(console.error)
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
+// Safe to run again: everything is created only if missing.
+async function seed(client: any) {
+    prisma = client;
+    await main();
+}
+
+module.exports = { seed };
+
+// `npx prisma db seed` runs this file directly.
+if (require.main === module) {
+    const client = new PrismaClient();
+    seed(client)
+        .catch((error) => { console.error(error); process.exitCode = 1; })
+        .finally(async () => { await client.$disconnect(); });
+}

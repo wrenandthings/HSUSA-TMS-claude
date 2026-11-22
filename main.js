@@ -1,6 +1,18 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, dialog } = require("electron");
+const fs = require("fs");
 const path = require("path");
-require("./electron/main/load-env").loadEnv(__dirname);
+
+// An installed copy keeps its database, logs and backups in the person's own
+// app-data folder (%APPDATA%\HSUSA TMS). This must run before any handler
+// creates a Prisma client. A copy run from the project uses the project's .env.
+if (app.isPackaged) {
+    const data = app.getPath("userData");
+    fs.mkdirSync(data, { recursive: true });
+    process.env.DATABASE_URL = `file:${path.join(data, "hsusa-tms.db").replace(/\\/g, "/")}`;
+    process.env.LOG_DIR = path.join(data, "logs");
+} else {
+    require("./electron/main/load-env").loadEnv(__dirname);
+}
 const { registerAuthenticationHandlers } = require("./electron/main/auth-handler");
 const { registerUserHandlers } = require("./electron/main/user-handler");
 const { registerRoleHandlers } = require("./electron/main/role-handler");
@@ -28,12 +40,40 @@ function createMainWindow() {
         title: "HSUSA Training Management System",
         webPreferences: { preload: preloadPath, contextIsolation: true, nodeIntegration: false }
     });
-    mainWindow.loadURL("http://localhost:5173");
+    if (app.isPackaged) mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
+    else mainWindow.loadURL("http://localhost:5173");
     mainWindow.on("closed", () => { mainWindow = null; });
 }
 
-app.whenReady().then(() => {
-    getLogger().application("APP_STARTED", { version: app.getVersion() });
+// Installed copies set up and update their own database (electron/main/first-run.js).
+async function prepareInstalledDatabase() {
+    if (!app.isPackaged) return true;
+    const { PrismaClient } = require("@prisma/client");
+    const { prepareDatabase } = require("./electron/main/first-run");
+    const { createQuestionBankImporter } = require("./electron/main/question-bank");
+    const prisma = new PrismaClient();
+    try {
+        await prepareDatabase(prisma, {
+            migrationsFolder: path.join(__dirname, "prisma", "migrations"),
+            banksFolder: path.join(__dirname, "documents", "question-banks"),
+            seed: require("./dist-electron/seed.cjs").seed,
+            importer: createQuestionBankImporter(prisma),
+            logger: getLogger()
+        });
+        return true;
+    } catch (error) {
+        getLogger().failure("DATABASE_SETUP_FAILED", error);
+        dialog.showErrorBox("HSUSA TMS could not start", `Setting up the database failed: ${error.message}\n\nThe log is in ${process.env.LOG_DIR}.`);
+        app.quit();
+        return false;
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+app.whenReady().then(async () => {
+    getLogger().application("APP_STARTED", { version: app.getVersion(), installed: app.isPackaged });
+    if (!(await prepareInstalledDatabase())) return;
     registerUserHandlers();
     registerSubjectHandlers();
     registerQuestionHandlers();

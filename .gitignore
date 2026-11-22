@@ -151,3 +151,7 @@ vite.config.ts.timestamp-*
 
 # Database backups are made next to the database (prisma/backups/).
 prisma/backups/
+
+# Installer build output
+dist-electron/
+release/

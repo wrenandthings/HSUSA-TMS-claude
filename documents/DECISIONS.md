@@ -4,6 +4,13 @@ The Word documents in this folder are the original baseline. When the owner
 decides something that differs from them, it is recorded here, newest first.
 Each entry says which document it changes.
 
+## 2026-11-21: Windows installer for testers
+
+- Owner: built on the owner's laptop (double-click build-installer.cmd), not on GitHub. Unsigned for testing; testers click "More info", then "Run anyway". Sign before a wider release (a code-signing certificate is a paid service with a secret; ask the owner first).
+- An installed copy keeps its database, logs and backups in %APPDATA%\HSUSA TMS. On each start it applies new migrations itself (electron/main/first-run.js, recorded in Prisma's _prisma_migrations table), runs the seed after a new migration, and imports the bundled question banks if the bank is empty.
+- First sign-in on a new install: the seed's admin account, which must choose a new password straight away.
+- Packages: removed Material UI, Emotion, Redux and React Router (unused; owner decision 2026-11-20). Electron, Prisma CLI, React and fonts are build-time only.
+
 ## 2026-11-21: Progress (Phase 8, basic)
 
 Finch's choices where the specs are silent (cheap to change; tell Finch):
