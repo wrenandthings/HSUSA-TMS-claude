@@ -28,6 +28,7 @@ export type Assignment = {
 
 export type Qualification = {
     id: string;
+    requirements?: { requirementType: string; requirementRef: string }[];
     code: string;
     name: string;
     description?: string | null;

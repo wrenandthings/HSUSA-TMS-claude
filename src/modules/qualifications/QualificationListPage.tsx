@@ -1,5 +1,6 @@
 import { askToConfirm } from "../../components/askToConfirm";
 import { useEffect, useState } from "react";
+import WaiverPanel from "../training/WaiverPanel";
 import { Assignment, Qualification, QualificationInput, QualificationService } from "./QualificationService";
 import QualificationStatusBadge from "./QualificationStatusBadge";
 import { formatQualificationDate, statusDisplay } from "./qualificationStatusDisplay";
@@ -66,6 +67,10 @@ export default function QualificationListPage(props: Props) {
     // Remove asks for a reason in the row itself: Electron does not support the browser prompt dialog.
     const [removingAssignment, setRemovingAssignment] = useState<string | null>(null);
     const [removeReason, setRemoveReason] = useState("");
+    // Waivers: Director of Operations or Administrator (Approval Matrix).
+    const [canWaive, setCanWaive] = useState(false);
+    const [waiverFor, setWaiverFor] = useState<{ userId: string; username: string } | null>(null);
+    useEffect(() => { void (async () => { const r = await window.hsusa.myTraining?.(); setCanWaive(Boolean(r?.canWaive || r?.canOverride)); })(); }, []);
 
     async function load() {
         try {
@@ -228,13 +233,16 @@ export default function QualificationListPage(props: Props) {
         const active = activeAssignments(selected);
         const history = (selected.assignments ?? []).filter(a => a.status !== "ACTIVE");
         const assignedIds = new Set(active.map(a => a.user.id));
+        const fromTraining = (selected.requirements?.length ?? 0) > 0;
         return (
             <div style={{ padding: "40px" }}>
                 <button onClick={() => setSelected(null)}>← Back To Qualifications</button>
                 <h1>{selected.name} ({selected.code})</h1>
                 {message && <p>{message}</p>}
                 <p>{selected.description}</p>
-                <p><strong>Renewal:</strong> {renewalText(selected)}{selected.active ? "" : " · Inactive"}</p>
+                {fromTraining
+                    ? <p><strong>Status comes from each person's training.</strong> Change what it needs on the Requirements page.{selected.active ? "" : " · Inactive"}</p>
+                    : <p><strong>Renewal:</strong> {renewalText(selected)}{selected.active ? "" : " · Inactive"}</p>}
                 <button onClick={() => startEdit(selected)}>Edit Qualification</button>
 
                 <h2>Assign a person</h2>
@@ -242,10 +250,10 @@ export default function QualificationListPage(props: Props) {
                     <option value="">Select user</option>
                     {users.filter(user => !assignedIds.has(user.id)).map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
                 </select>{" "}
-                <label>Awarded <input type="date" value={newAssignment.awardedDate} onChange={e => setNewAssignment({ ...newAssignment, awardedDate: e.target.value })} /></label>{" "}
-                <label>Expires <input type="date" value={newAssignment.expirationDate} onChange={e => setNewAssignment({ ...newAssignment, expirationDate: e.target.value })} /></label>{" "}
+                {!fromTraining && <><label>Awarded <input type="date" value={newAssignment.awardedDate} onChange={e => setNewAssignment({ ...newAssignment, awardedDate: e.target.value })} /></label>{" "}
+                <label>Expires <input type="date" value={newAssignment.expirationDate} onChange={e => setNewAssignment({ ...newAssignment, expirationDate: e.target.value })} /></label>{" "}</>}
                 <button className="primary" disabled={!newAssignment.userId} onClick={() => void assign()}>Assign</button><br />
-                <small>{selected.renewalMonths ? `Leave Expires empty to use the awarded date plus ${selected.renewalMonths} months.` : "This qualification does not expire unless you set a date."}</small>
+                {!fromTraining && <small>{selected.renewalMonths ? `Leave Expires empty to use the awarded date plus ${selected.renewalMonths} months.` : "This qualification does not expire unless you set a date."}</small>}
 
                 <h2>Assigned People</h2>
                 {active.length === 0 ? <p>Nobody is assigned.</p> : (
@@ -280,6 +288,7 @@ export default function QualificationListPage(props: Props) {
                                     : formatQualificationDate(a.expirationDate)}</td>
                                 <td>
                                     {!a.fromRequirements && <><button onClick={() => startDateEdit(a)}>Edit Dates</button>{" "}</>}
+                                    {a.fromRequirements && canWaive && <><button onClick={() => setWaiverFor({ userId: a.user.id, username: a.user.username })}>Waivers</button>{" "}</>}
                                     <button onClick={() => void setSuspended(a, !a.suspended)}>{a.suspended ? "Reinstate" : "Suspend"}</button>{" "}
                                     <button onClick={() => startRemove(a)}>Remove</button>
                                 </td>
@@ -287,6 +296,8 @@ export default function QualificationListPage(props: Props) {
                         ))}</tbody>
                     </table>
                 )}
+
+                {waiverFor && <WaiverPanel key={waiverFor.userId} userId={waiverFor.userId} username={waiverFor.username} code={selected.code} onClose={() => setWaiverFor(null)} onChanged={() => void refreshSelected(selected.id)} />}
 
                 <h2>Assignment History</h2>
                 {history.length === 0 ? <p>No earlier assignments.</p> : (

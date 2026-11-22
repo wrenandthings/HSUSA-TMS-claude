@@ -46,6 +46,7 @@ export default function MyTrainingPage() {
                         <h2 style={{ margin: 0 }}>{q.name}</h2>
                         <StatusBadge status={q.status} />
                         {q.dueDate && <span className="muted" style={{ fontSize: "14px" }}>Next due {day(q.dueDate)}</span>}
+                        {q.overridden && <span className="muted" style={{ fontSize: "14px" }}>Overridden by an administrator until {day(q.overridden.expiresAt)}</span>}
                     </div>
                     {q.items.length === 0 ? (
                         <p className="muted" style={{ margin: "0 24px 20px" }}>No requirements are set for this qualification.</p>
@@ -64,6 +65,7 @@ export default function MyTrainingPage() {
                                             <td>
                                                 {item.waiting && item.status !== "CURRENT" ? <span className="badge warn">Waiting for approval</span> : <StatusBadge status={item.status} />}
                                                 {item.inGrace && <div className="muted" style={{ fontSize: "13px" }}>In grace until {day(item.graceEnd)}</div>}
+                                                {item.waived && <div className="muted" style={{ fontSize: "13px" }}>Waived until {day(item.waived.expiresAt)}</div>}
                                             </td>
                                             <td>{day(item.lastCompleted)}</td>
                                             <td>{day(item.dueDate)}</td>

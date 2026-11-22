@@ -209,3 +209,55 @@ describe("alert rows", () => {
         expect(rows[0].qualifications.sort()).toEqual(["IFR", "PIC"]);
     });
 });
+
+describe("waivers and overrides", () => {
+    let admin: string;
+    let dir: string;
+    beforeAll(async () => {
+        const roleId = async (name: string) => (await db.prisma.role.findUniqueOrThrow({ where: { roleName: name } })).id;
+        admin = (await db.prisma.user.create({ data: { username: "adm2", passwordHash: "x", firstName: "A", lastName: "D", status: "ACTIVE", userRoles: { create: { roleId: await roleId("Administrator") } } } })).id;
+        dir = (await db.prisma.user.create({ data: { username: "do1", passwordHash: "x", firstName: "D", lastName: "O", status: "ACTIVE", userRoles: { create: { roleId: await roleId("Director_of_Operations") } } } })).id;
+    });
+    const ifrItem = async (code: string) => (await statusOf("IFR")).items.find((i: any) => i.code === code);
+
+    it("lets only the Director of Operations or an Administrator waive, and only an Administrator override", async () => {
+        const input = { userId: pilot, targetType: "TRAINING", targetRef: "135.297", reason: "Simulator down", expiresAt: "2027-01-15" };
+        expect((await training.grantWaiver(manager, input)).message).toBe("Only the Director of Operations or an Administrator can waive a requirement.");
+        expect((await training.grantWaiver(dir, { ...input, targetType: "QUALIFICATION", targetRef: "IFR" })).message).toBe("Only an Administrator can override a qualification.");
+        expect((await training.waiverView(manager, pilot, "IFR")).message).toBe("Only the Director of Operations or an Administrator can grant waivers.");
+    });
+
+    it("needs a reason and an end date after today, at most 2 years ahead", async () => {
+        const input = { userId: pilot, targetType: "TRAINING", targetRef: "135.297", reason: "Simulator down", expiresAt: "2027-01-15" };
+        expect((await training.grantWaiver(dir, { ...input, reason: " " })).message).toBe("Give the reason. It is required for every waiver and override.");
+        expect((await training.grantWaiver(dir, { ...input, expiresAt: "2026-11-21" })).message).toBe("The end date must be after today.");
+        expect((await training.grantWaiver(dir, { ...input, expiresAt: "2029-01-01" })).message).toBe("A waiver can last at most 2 years.");
+    });
+
+    it("makes a waived training count as current until the end date, and audits it", async () => {
+        expect((await ifrItem("135.297")).status).toBe("MISSING");
+        expect(await training.grantWaiver(dir, { userId: pilot, targetType: "TRAINING", targetRef: "135.297", reason: "Simulator down", documentation: "Email from DO", expiresAt: "2027-01-15" })).toEqual({ success: true, message: "Requirement waived." });
+        const item = await ifrItem("135.297");
+        expect(item).toMatchObject({ status: "CURRENT", waived: { reason: "Simulator down" } });
+        expect(item.dueDate.toISOString().slice(0, 10)).toBe("2027-01-15");
+        expect(await db.prisma.auditLog.count({ where: { action: "REQUIREMENT_WAIVED" } })).toBe(1);
+        expect((await training.grantWaiver(dir, { userId: pilot, targetType: "TRAINING", targetRef: "135.297", reason: "Again", expiresAt: "2027-01-20" })).message).toBe("There is already an active one. Revoke it first to change it.");
+    });
+
+    it("lets an Administrator override a whole qualification, and revoking it restores the real status", async () => {
+        const huet = await db.prisma.qualification.findUniqueOrThrow({ where: { code: "HUET" } });
+        await db.prisma.userQualification.create({ data: { userId: pilot, qualificationId: huet.id } });
+        expect((await statusOf("HUET")).status).toBe("INCOMPLETE");
+        expect((await training.grantWaiver(admin, { userId: pilot, targetType: "QUALIFICATION", targetRef: "HUET", reason: "Course cancelled by vendor", expiresAt: "2026-12-10" })).success).toBe(true);
+        // Ends within 30 days, so it shows as due soon.
+        expect(await statusOf("HUET")).toMatchObject({ status: "EXPIRING", overridden: { reason: "Course cancelled by vendor" } });
+        const view = await training.waiverView(admin, pilot, "HUET");
+        expect(view).toMatchObject({ canWaive: true, canOverride: true });
+        const id = view.waivers.find((w: any) => w.targetType === "QUALIFICATION").id;
+        expect((await training.revokeWaiver(dir, id, "x")).message).toBe("You cannot revoke this.");
+        expect((await training.revokeWaiver(admin, id, "")).message).toBe("Give the reason for revoking.");
+        expect(await training.revokeWaiver(admin, id, "Course rebooked")).toEqual({ success: true, message: "Revoked." });
+        expect((await statusOf("HUET")).status).toBe("INCOMPLETE");
+        expect((await training.waiverView(admin, pilot, "HUET")).waivers[0]).toMatchObject({ revokeReason: "Course rebooked", revokedBy: "adm2" });
+    });
+});

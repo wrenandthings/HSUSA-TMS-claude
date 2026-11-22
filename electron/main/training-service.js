@@ -9,6 +9,10 @@ const { createConfigurationService } = require("./configuration-service");
 const MANAGER_ROLES = ["Administrator", "Training_Manager", "Director_of_Operations", "Chief_Pilot", "Maintenance_Manager", "Quality_Control"];
 // Who may change what each qualification needs (DECISIONS.md 2026-11-21).
 const REQUIREMENT_EDITORS = ["Administrator", "Training_Manager"];
+// Approval Matrix: a waiver only by the Director of Operations or an
+// Administrator; overriding a whole qualification only by an Administrator.
+const WAIVER_ROLES = ["Administrator", "Director_of_Operations"];
+const OVERRIDE_ROLES = ["Administrator"];
 const fail = (message) => ({ success: false, message });
 
 // <input type="date"> gives "YYYY-MM-DD"; store UTC midnight of that day.
@@ -24,6 +28,10 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
         return Boolean(await prisma.userRole.findFirst({ where: { userId, role: { roleName: { in: MANAGER_ROLES } } } }));
     }
 
+    async function hasRole(userId, roles) {
+        return Boolean(await prisma.userRole.findFirst({ where: { userId, role: { roleName: { in: roles } } } }));
+    }
+
     async function canEditRequirements(userId) {
         return Boolean(await prisma.userRole.findFirst({ where: { userId, role: { roleName: { in: REQUIREMENT_EDITORS } } } }));
     }
@@ -34,19 +42,24 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
 
     // Everything needed to work out one person's qualifications in memory.
     async function context(userId) {
-        const [qualifications, allPrograms, records, assignments, waiting] = await Promise.all([
+        const [qualifications, allPrograms, records, assignments, waiting, waivers] = await Promise.all([
             prisma.qualification.findMany({ where: { hidden: false }, include: { requirements: true } }),
             prisma.trainingProgram.findMany(),
             prisma.userTrainingRecord.findMany({ where: { userId, approval: "APPROVED", result: { in: ["PASS", "WAIVED"] } } }),
             prisma.userQualification.findMany({ where: { userId, status: "ACTIVE" } }),
-            prisma.userTrainingRecord.findMany({ where: { userId, approval: "PENDING" }, select: { programId: true } })
+            prisma.userTrainingRecord.findMany({ where: { userId, approval: "PENDING" }, select: { programId: true } }),
+            prisma.requirementWaiver.findMany({ where: { userId, revokedAt: null } })
         ]);
+        const today = now();
+        const active = waivers.filter((w) => daysRemaining(w.issuedAt, today) <= 0 && daysRemaining(w.expiresAt, today) >= 0);
         return {
             qualifications: new Map(qualifications.map((q) => [q.code, q])),
             programs: new Map(allPrograms.map((p) => [p.code, p])),
             records,
             assignments: new Map(assignments.map((a) => [a.qualificationId, a])),
-            waiting: new Set(waiting.map((r) => r.programId))
+            waiting: new Set(waiting.map((r) => r.programId)),
+            waivedTraining: new Map(active.filter((w) => w.targetType === "TRAINING").map((w) => [w.targetRef, w])),
+            overridden: new Map(active.filter((w) => w.targetType === "QUALIFICATION").map((w) => [w.targetRef, w]))
         };
     }
 
@@ -65,9 +78,22 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
             const program = ctx.programs.get(req.requirementRef);
             if (!program) return { type: "TRAINING", code: req.requirementRef, name: req.requirementRef, status: "MISSING", dueDate: null, graceEnd: null };
             const mine = ctx.records.filter((r) => r.programId === program.id);
+            const waiver = ctx.waivedTraining.get(program.code);
+            if (waiver) {
+                const days = daysRemaining(waiver.expiresAt, today);
+                const done = trainingStatus(program, mine, today);
+                return { type: "TRAINING", code: program.code, name: program.name, programId: program.id, renewalMonths: program.renewalMonths, waiting: ctx.waiting.has(program.id),
+                    status: days <= 30 ? "EXPIRING" : "CURRENT", dueDate: waiver.expiresAt, graceEnd: null, inGrace: false, lastCompleted: done.lastCompleted ?? null,
+                    waived: { id: waiver.id, reason: waiver.reason, expiresAt: waiver.expiresAt } };
+            }
             return { type: "TRAINING", code: program.code, name: program.name, programId: program.id, renewalMonths: program.renewalMonths, waiting: ctx.waiting.has(program.id), ...trainingStatus(program, mine, today) };
         });
-        const overall = combine(items);
+        let overall = combine(items);
+        const override = ctx.overridden.get(code);
+        if (override) {
+            const days = daysRemaining(override.expiresAt, today);
+            overall = { ...overall, status: days <= 30 ? "EXPIRING" : "CURRENT", dueDate: override.expiresAt, graceEnd: null, overridden: { id: override.id, reason: override.reason, expiresAt: override.expiresAt } };
+        }
         const assignment = ctx.assignments.get(qualification.id);
         return {
             code,
@@ -95,6 +121,8 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
             success: true,
             canApprove,
             canEditRequirements: canEdit,
+            canWaive: await hasRole(userId, WAIVER_ROLES),
+            canOverride: await hasRole(userId, OVERRIDE_ROLES),
             pendingToReview: canApprove ? await prisma.userTrainingRecord.count({ where: { approval: "PENDING", userId: { not: userId } } }) : 0,
             qualifications: mine.map((q) => evaluate(ctx, q.code, today)),
             records: records.map((r) => ({
@@ -174,6 +202,73 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
     // For the Qualifications pages: one person's status on one qualification.
     async function qualificationFor(userId, code) {
         return evaluate(await context(userId), code, now());
+    }
+
+    // Waivers and overrides for one person's qualification.
+    async function waiverView(viewerId, userId, code) {
+        const [canWaive, canOverride] = await Promise.all([hasRole(viewerId, WAIVER_ROLES), hasRole(viewerId, OVERRIDE_ROLES)]);
+        if (!canWaive && !canOverride) return fail("Only the Director of Operations or an Administrator can grant waivers.");
+        const ctx = await context(userId);
+        const qualification = ctx.qualifications.get(code);
+        if (!qualification) return fail("Qualification not found.");
+        const result = evaluate(ctx, code, now());
+        const refs = new Set([code, ...qualification.requirements.filter((r) => r.requirementType === "TRAINING").map((r) => r.requirementRef)]);
+        const waivers = await prisma.requirementWaiver.findMany({
+            where: { userId, targetRef: { in: [...refs] } },
+            include: { approvedBy: { select: { username: true } }, revokedBy: { select: { username: true } } },
+            orderBy: { createdAt: "desc" }
+        });
+        return {
+            success: true, canWaive, canOverride, qualification: result,
+            waivers: waivers.map((w) => ({
+                id: w.id, targetType: w.targetType, targetRef: w.targetRef, reason: w.reason, documentation: w.documentation,
+                issuedAt: w.issuedAt, expiresAt: w.expiresAt, approvedBy: w.approvedBy.username,
+                revokedAt: w.revokedAt, revokedBy: w.revokedBy?.username ?? null, revokeReason: w.revokeReason
+            }))
+        };
+    }
+
+    async function grantWaiver(viewerId, input = {}) {
+        const targetType = input.targetType === "QUALIFICATION" ? "QUALIFICATION" : input.targetType === "TRAINING" ? "TRAINING" : null;
+        if (!targetType) return fail("Unknown waiver type.");
+        if (targetType === "TRAINING" && !(await hasRole(viewerId, WAIVER_ROLES))) return fail("Only the Director of Operations or an Administrator can waive a requirement.");
+        if (targetType === "QUALIFICATION" && !(await hasRole(viewerId, OVERRIDE_ROLES))) return fail("Only an Administrator can override a qualification.");
+        const person = await prisma.user.findUnique({ where: { id: String(input.userId ?? "") } });
+        if (!person) return fail("Person not found.");
+        const ref = String(input.targetRef ?? "");
+        const exists = targetType === "TRAINING"
+            ? await prisma.trainingProgram.findUnique({ where: { code: ref } })
+            : await prisma.qualification.findUnique({ where: { code: ref } });
+        if (!exists) return fail(targetType === "TRAINING" ? "Training not found." : "Qualification not found.");
+        const reason = String(input.reason ?? "").trim();
+        if (!reason) return fail("Give the reason. It is required for every waiver and override.");
+        const expiresAt = parseDay(input.expiresAt);
+        if (!expiresAt) return fail("Enter the date it ends.");
+        const t = now();
+        const issuedAt = new Date(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()));
+        if (expiresAt <= issuedAt) return fail("The end date must be after today.");
+        if (expiresAt > new Date(Date.UTC(t.getFullYear() + 2, t.getMonth(), t.getDate()))) return fail("A waiver can last at most 2 years.");
+        const already = await prisma.requirementWaiver.findFirst({ where: { userId: person.id, targetType, targetRef: ref, revokedAt: null, expiresAt: { gte: issuedAt } } });
+        if (already) return fail("There is already an active one. Revoke it first to change it.");
+        const documentation = String(input.documentation ?? "").trim() || null;
+        const created = await prisma.requirementWaiver.create({ data: { userId: person.id, targetType, targetRef: ref, reason, documentation, approvedById: viewerId, issuedAt, expiresAt } });
+        await prisma.auditLog.create({ data: { userId: viewerId, entity: "RequirementWaiver", entityId: created.id, action: targetType === "TRAINING" ? "REQUIREMENT_WAIVED" : "QUALIFICATION_OVERRIDDEN", newValue: JSON.stringify({ person: person.id, target: ref, reason, documentation, expiresAt: input.expiresAt }) } });
+        return { success: true, message: targetType === "TRAINING" ? "Requirement waived." : "Qualification overridden." };
+    }
+
+    async function revokeWaiver(viewerId, waiverId, reason) {
+        const waiver = await prisma.requirementWaiver.findUnique({ where: { id: String(waiverId ?? "") } });
+        if (!waiver) return fail("Waiver not found.");
+        const allowed = waiver.targetType === "TRAINING" ? await hasRole(viewerId, WAIVER_ROLES) : await hasRole(viewerId, OVERRIDE_ROLES);
+        if (!allowed) return fail("You cannot revoke this.");
+        if (waiver.revokedAt) return fail("Already revoked.");
+        const why = String(reason ?? "").trim();
+        if (!why) return fail("Give the reason for revoking.");
+        await prisma.$transaction([
+            prisma.requirementWaiver.update({ where: { id: waiver.id }, data: { revokedAt: now(), revokedById: viewerId, revokeReason: why } }),
+            prisma.auditLog.create({ data: { userId: viewerId, entity: "RequirementWaiver", entityId: waiver.id, action: waiver.targetType === "TRAINING" ? "WAIVER_REVOKED" : "OVERRIDE_REVOKED", newValue: JSON.stringify({ reason: why }) } })
+        ]);
+        return { success: true, message: "Revoked." };
     }
 
     // The requirements editor (Training Manager and Administrator).
@@ -317,7 +412,7 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
         return { success: true, windowDays: window, mine, team };
     }
 
-    return { alerts, requirementsEditor, setRequirements, setRenewal, canEditRequirements, programs, myTraining, submit, withdraw, pending, review, qualificationFor, isManager };
+    return { waiverView, grantWaiver, revokeWaiver, alerts, requirementsEditor, setRequirements, setRenewal, canEditRequirements, programs, myTraining, submit, withdraw, pending, review, qualificationFor, isManager };
 }
 
 module.exports = { createTrainingService, parseDay };
