@@ -4,6 +4,14 @@ The Word documents in this folder are the original baseline. When the owner
 decides something that differs from them, it is recorded here, newest first.
 Each entry says which document it changes.
 
+## 2026-11-21: Long-term direction: a web application hosted on the internet
+
+- Owner, 23:08: "eventually hosted on the internet will probably be the best option for the company due to us not having any in office IT and being in many locations."
+- Why it came up: each installed copy has its own database, so recorded training, approvals and question changes do not reach other people. A shared, hosted app fixes that, and updates happen in one place.
+- This changes the Master Baseline's Version 1 promise ("offline first, no internet requirement"); the Cloud Migration Design already plans an API layer, PostgreSQL and optional Microsoft Entra ID sign-in for later versions.
+- Not started. For now: the desktop app stays for testing. New work keeps business rules in the service files (taking a Prisma client), so they can move behind a web server unchanged.
+- Before building it the owner decides: the hosting provider (a paid service, set up with credentials the owner supplies), the timing, and whether people sign in with company Microsoft 365 accounts.
+
 ## 2026-11-21: Windows installer for testers
 
 - Owner: built on the owner's laptop (double-click build-installer.cmd), not on GitHub. Unsigned for testing; testers click "More info", then "Run anyway". Sign before a wider release (a code-signing certificate is a paid service with a secret; ask the owner first).
