@@ -13,6 +13,7 @@ const { registerBackupHandlers, backUpIfDue } = require("./electron/main/backup-
 const { registerQuizHandlers } = require("./electron/main/quiz-handler");
 const { registerTrainingHandlers } = require("./electron/main/training-handler");
 const { registerFlashcardHandlers } = require("./electron/main/flashcard-handler");
+const { registerAnalyticsHandlers } = require("./electron/main/analytics-handler");
 
 process.on("uncaughtException", (error) => getLogger().failure("UNCAUGHT_EXCEPTION", error));
 process.on("unhandledRejection", (reason) => getLogger().failure("UNHANDLED_REJECTION", reason));
@@ -44,6 +45,7 @@ app.whenReady().then(() => {
     registerQuizHandlers();
     registerTrainingHandlers();
     registerFlashcardHandlers();
+    registerAnalyticsHandlers();
     createMainWindow();
     // A daily backup, in the background, once the window is open.
     void backUpIfDue();

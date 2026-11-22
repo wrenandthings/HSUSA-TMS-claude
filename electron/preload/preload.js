@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld("hsusa", {
     finishQuiz: (sessionId) => ipcRenderer.invoke("quizzes-finish", { sessionId }),
     quizHistory: () => ipcRenderer.invoke("quizzes-history"),
     myTraining: () => ipcRenderer.invoke("training-mine"),
+    getProgress: (userId) => ipcRenderer.invoke("progress-get", { userId }),
+    getEveryoneProgress: () => ipcRenderer.invoke("progress-everyone"),
     flashcardOptions: () => ipcRenderer.invoke("flashcards-options"),
     startFlashcards: (input) => ipcRenderer.invoke("flashcards-start", input),
     getFlashcards: (sessionId) => ipcRenderer.invoke("flashcards-get", { sessionId }),

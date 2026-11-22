@@ -12,8 +12,9 @@ import ApprovalsPage from "../modules/training/ApprovalsPage";
 import RequirementsPage from "../modules/training/RequirementsPage";
 import AlertsPanel from "../modules/training/AlertsPanel";
 import FlashcardsPage from "../modules/flashcards/FlashcardsPage";
+import ProgressPage from "../modules/progress/ProgressPage";
 
-type Section = "home" | "training" | "approvals" | "requirements" | "quizzes" | "flashcards" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
+type Section = "home" | "training" | "approvals" | "requirements" | "quizzes" | "flashcards" | "progress" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
 
 // The sidebar, in the order of the approved design (2026-11-20).
 const SECTIONS: { id: Section; label: string; description: string }[] = [
@@ -23,6 +24,7 @@ const SECTIONS: { id: Section; label: string; description: string }[] = [
     { id: "requirements", label: "Requirements", description: "What each qualification needs and how often each training repeats." },
     { id: "quizzes", label: "Quizzes", description: "Practice by subject or manual, find your weak areas, or take a certification quiz." },
     { id: "flashcards", label: "Flashcards", description: "Study question cards by subject or manual, or your weak areas, and see what you know." },
+    { id: "progress", label: "Progress", description: "Readiness, coverage and knowledge by subject, and your weak areas." },
     { id: "qualifications", label: "Qualifications", description: "Who holds what, when it expires, and the history of every change." },
     { id: "questions", label: "Question Bank", description: "Questions by subject, with answers and manual references. Import banks from CSV." },
     { id: "subjects", label: "Subjects", description: "The subjects questions belong to, such as MAINT or OMA." },
@@ -90,6 +92,7 @@ export default function App() {
     else if (section === "questions") page = <QuestionListPage key={visit} onBack={goHome} />;
     else if (section === "qualifications") page = <QualificationListPage key={visit} onBack={goHome} />;
     else if (section === "quizzes") page = <QuizzesPage key={visit} onOpenFlashcards={(id, note) => { open("flashcards"); setFlashcardStart({ id, note }); }} />;
+    else if (section === "progress") page = <ProgressPage key={visit} />;
     else if (section === "flashcards") page = <FlashcardsPage key={visit} initialSessionId={flashcardStart?.id} initialNote={flashcardStart?.note} />;
     else if (section === "requirements") page = <RequirementsPage key={visit} />;
     else if (section === "training") page = <MyTrainingPage key={visit} />;

@@ -4,6 +4,18 @@ The Word documents in this folder are the original baseline. When the owner
 decides something that differs from them, it is recorded here, newest first.
 Each entry says which document it changes.
 
+## 2026-11-21: Progress (Phase 8, basic)
+
+Finch's choices where the specs are silent (cheap to change; tell Finch):
+
+- A question is "seen" once it is answered in a quiz. Flashcards do not test the answer, so they do not count.
+- Knowledge is the share of seen questions whose latest quiz answer is right.
+- A subject's knowledge is hidden until its coverage reaches Settings > Readiness > CoverageThreshold (default 50%), as the Master Baseline requires. Overall knowledge uses only subjects past the threshold, weighted by questions seen. With 2,106 questions, waiting for 50% of the whole bank would hide knowledge for a long time.
+- Qualification score = current qualifications / assigned qualifications. Current and Expiring count in full; Expired, Not complete and Suspended count for nothing (Rules Matrix).
+- Readiness = knowledge x 70% + qualifications x 30% (Settings). With no qualifications assigned, readiness is knowledge alone. While knowledge is hidden, readiness is not shown.
+- Weak areas: sections with at least 3 answered questions, lowest score first.
+- Everyone sees their own progress; the six manager roles can see anyone's and an Everyone table.
+
 ## 2026-11-21: Qualifications are built from requirements; people record their own training
 
 **Changes:** Qualification Rules Matrix v1.0 and Qualification Approval
