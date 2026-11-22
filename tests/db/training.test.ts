@@ -157,3 +157,16 @@ describe("the requirements editor", () => {
         expect(item).toMatchObject({ status: "MISSING", waiting: true });
     });
 });
+
+describe("the Qualifications page", () => {
+    it("takes a holder's status from their training when requirements are set", async () => {
+        const { createQualificationRepository } = require(path.resolve(__dirname, "../../electron/main/qualification-repository.js"));
+        const repo = createQualificationRepository(db.prisma, { now });
+        const pic = (await repo.list()).find((q: any) => q.code === "PIC");
+        const holder = pic.assignments.find((a: any) => a.userId === pilot);
+        expect(holder).toMatchObject({ fromRequirements: true, qualificationStatus: "CURRENT" });
+        expect(holder.requirementDueDate.toISOString().slice(0, 10)).toBe("2027-01-31");
+        const ifr = (await repo.list()).find((q: any) => q.code === "IFR");
+        expect(ifr.assignments.find((a: any) => a.userId === pilot).qualificationStatus).toBe("INCOMPLETE");
+    });
+});

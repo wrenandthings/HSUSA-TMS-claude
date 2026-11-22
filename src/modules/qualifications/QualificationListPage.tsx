@@ -10,7 +10,7 @@ type DateDraft = { awardedDate: string; expirationDate: string };
 
 const service = new QualificationService();
 const emptyForm = (): QualificationInput => ({ code: "", name: "", description: "", renewalMonths: "", active: true });
-const WARNING_STATUSES = ["EXPIRING", "EXPIRING_CRITICAL", "EXPIRED", "SUSPENDED"] as const;
+const WARNING_STATUSES = ["EXPIRING", "EXPIRING_CRITICAL", "EXPIRED", "INCOMPLETE", "SUSPENDED"] as const;
 
 // Dates are stored as UTC midnight, so the UTC date is the day that was picked.
 function dateInputValue(value?: string | Date | null): string {
@@ -275,9 +275,11 @@ export default function QualificationListPage(props: Props) {
                                 <td>{a.user.username}</td>
                                 <td><QualificationStatusBadge status={a.qualificationStatus} /></td>
                                 <td>{a.awardedDate ? formatQualificationDate(a.awardedDate) : "—"}</td>
-                                <td>{formatQualificationDate(a.expirationDate)}</td>
+                                <td>{a.fromRequirements
+                                    ? <>{a.requirementDueDate ? formatQualificationDate(a.requirementDueDate) : "—"} <span className="muted" style={{ fontSize: "13px" }}>(from training)</span></>
+                                    : formatQualificationDate(a.expirationDate)}</td>
                                 <td>
-                                    <button onClick={() => startDateEdit(a)}>Edit Dates</button>{" "}
+                                    {!a.fromRequirements && <><button onClick={() => startDateEdit(a)}>Edit Dates</button>{" "}</>}
                                     <button onClick={() => void setSuspended(a, !a.suspended)}>{a.suspended ? "Reinstate" : "Suspend"}</button>{" "}
                                     <button onClick={() => startRemove(a)}>Remove</button>
                                 </td>

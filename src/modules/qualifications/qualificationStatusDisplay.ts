@@ -9,6 +9,7 @@ export const STATUS_DISPLAY: Record<QualificationStatus, StatusDisplay> = {
     EXPIRING: { label: "Expiring", description: "30-day warning: 30 days or fewer remain", color: "#7a4f01", background: "#fff4d6" },
     EXPIRING_CRITICAL: { label: "Critical", description: "7-day critical warning: 7 days or fewer remain", color: "#ffffff", background: "#c62828" },
     EXPIRED: { label: "Expired", description: "The expiration date has passed", color: "#ffffff", background: "#424242" },
+    INCOMPLETE: { label: "Not complete", description: "Some required training is not done or not yet approved", color: "#ffffff", background: "#a51f2b" },
     SUSPENDED: { label: "Suspended", description: "Suspended by an administrator", color: "#4a148c", background: "#f3e5f5" }
 };
 

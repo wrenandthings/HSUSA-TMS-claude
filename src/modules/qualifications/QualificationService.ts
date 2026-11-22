@@ -1,4 +1,4 @@
-export type QualificationStatus = "CURRENT" | "EXPIRING" | "EXPIRING_CRITICAL" | "EXPIRED" | "SUSPENDED";
+export type QualificationStatus = "CURRENT" | "EXPIRING" | "EXPIRING_CRITICAL" | "EXPIRED" | "SUSPENDED" | "INCOMPLETE";
 export type AssignmentStatus = "ACTIVE" | "COMPLETED" | "REVOKED";
 
 // A catalog entry such as PIC. renewalMonths empty means it does not expire.
@@ -13,6 +13,8 @@ export type Assignment = {
     userId: string;
     qualificationId: string;
     status: AssignmentStatus;
+    fromRequirements?: boolean;
+    requirementDueDate?: string | null;
     assignedAt: string | Date;
     awardedDate?: string | Date | null;
     expirationDate?: string | Date | null;

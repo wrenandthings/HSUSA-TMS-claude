@@ -2,7 +2,8 @@
 // documents/QUALIFICATION_SPECIFICATION.md. Takes a Prisma client so it can be
 // tested against a temporary database; qualification-handler.js wires it to IPC.
 
-const { calculateStatus } = require("./qualification-status");
+const { createTrainingService } = require("./training-service");
+const { calculateStatus, daysRemaining, CRITICAL_DAYS } = require("./qualification-status");
 
 // Only these user fields reach the renderer. Spec section 5: qualification
 // views must not expose password data or restricted user administration data.
@@ -54,6 +55,13 @@ function withStatus(assignment, now) {
     };
 }
 
+function trainingToQualificationStatus(result, at) {
+    if (result.status === "SUSPENDED" || result.status === "EXPIRED") return result.status;
+    if (result.status === "EXPIRING") return daysRemaining(result.dueDate, at) <= CRITICAL_DAYS ? "EXPIRING_CRITICAL" : "EXPIRING";
+    if (result.status === "CURRENT") return "CURRENT";
+    return "INCOMPLETE";
+}
+
 function snapshot(record) {
     return record ? JSON.stringify(record) : null;
 }
@@ -61,14 +69,26 @@ function snapshot(record) {
 function createQualificationRepository(prisma, options = {}) {
     const now = () => (options.now ? options.now() : new Date());
 
+    const training = createTrainingService(prisma, { now });
+
     const include = {
+        requirements: true,
         assignments: { include: { user: { select: USER_FIELDS } }, orderBy: { assignedAt: "desc" } }
     };
 
-    function serialize(record) {
+    // A qualification with requirements gets each holder's status from their
+    // approved training (DECISIONS.md 2026-11-21); otherwise from the dates.
+    async function serialize(record) {
         if (!record) return null;
         const at = now();
-        return { ...record, assignments: record.assignments.map(a => withStatus(a, at)) };
+        const fromTraining = record.requirements?.length > 0;
+        const assignments = await Promise.all(record.assignments.map(async (a) => {
+            const plain = withStatus(a, at);
+            if (!fromTraining || a.status !== "ACTIVE") return plain;
+            const result = await training.qualificationFor(a.userId, record.code);
+            return { ...plain, fromRequirements: true, requirementDueDate: result.dueDate ?? null, qualificationStatus: trainingToQualificationStatus(result, at) };
+        }));
+        return { ...record, assignments };
     }
 
     async function audit(actorId, action, entityId, oldValue, newValue) {
@@ -89,7 +109,7 @@ function createQualificationRepository(prisma, options = {}) {
                 include,
                 orderBy: { name: "asc" }
             });
-            return records.map(serialize);
+            return Promise.all(records.map(serialize));
         },
 
         // Spec section 3 and owner question 24: an administrator can hide a
