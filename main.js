@@ -38,6 +38,7 @@ function createMainWindow() {
         width: 1400,
         height: 900,
         title: "HSUSA Training Management System",
+        icon: path.join(__dirname, "electron", "assets", "icon.png"),
         webPreferences: { preload: preloadPath, contextIsolation: true, nodeIntegration: false }
     });
     if (app.isPackaged) mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));

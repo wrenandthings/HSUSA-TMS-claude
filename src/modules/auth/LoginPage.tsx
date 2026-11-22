@@ -1,3 +1,4 @@
+import whiteLogo from "../../assets/brand/heliservice-usa-white.png";
 import { useState } from "react";
 import LoginForm from "./LoginForm";
 import ChangePasswordForm from "../users/ChangePasswordForm";
@@ -77,9 +78,9 @@ export default function LoginPage(props: Props) {
     return (
         <div className="signin">
             <section className="signin-brand" aria-label="About">
-                <div className="brand">
-                    <div className="brand-name">HSUSA <span>TMS</span></div>
-                    <div className="brand-sub">Training Management System</div>
+                <div className="brand" style={{ gap: "14px" }}>
+                    <img src={whiteLogo} alt="HeliService USA" style={{ width: "360px", maxWidth: "100%", height: "auto" }} />
+                    <div className="brand-sub">HSUSA TMS · Training Management System</div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                     <div className="signin-stripe" aria-hidden="true"><span></span><span></span></div>

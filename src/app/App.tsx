@@ -1,3 +1,4 @@
+import flagIcon from "../assets/brand/flag-icon.png";
 import { useEffect, useRef, useState } from "react";
 import LoginPage from "../modules/auth/LoginPage";
 import UserListPage from "../modules/users/UserListPage";
@@ -104,7 +105,10 @@ export default function App() {
         <div className="app-shell">
             <nav className="sidebar" aria-label="Main">
                 <div className="brand">
-                    <div className="brand-name">HSUSA <span>TMS</span></div>
+                    <div className="brand-name" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <img src={flagIcon} alt="" style={{ width: "30px", height: "30px" }} />
+                        <span style={{ color: "inherit", fontWeight: 700 }}>HSUSA</span> <span>TMS</span>
+                    </div>
                     <div className="brand-sub">Training Management</div>
                     <div className="brand-stripe" aria-hidden="true"><span></span><span></span></div>
                 </div>

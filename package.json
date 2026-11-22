@@ -68,14 +68,16 @@
     ],
     "win": {
       "target": "nsis",
-      "signAndEditExecutable": false
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "artifactName": "HSUSA-TMS-Setup-${version}.exe",
-      "shortcutName": "HSUSA TMS"
+      "shortcutName": "HSUSA TMS",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "asar": false,
     "extraResources": [
