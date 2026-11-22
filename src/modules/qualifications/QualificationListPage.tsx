@@ -322,7 +322,7 @@ export default function QualificationListPage(props: Props) {
                 <tbody>{items.map(item => <tr key={item.id} style={item.active && !item.hidden ? undefined : { opacity: 0.6 }}>
                     <td>{item.code}</td>
                     <td><button onClick={() => void openDetails(item)}>{item.name}</button>{item.active ? "" : " (inactive)"}{item.hidden ? " (hidden)" : ""}</td>
-                    <td>{renewalText(item)}</td>
+                    <td>{(item.requirements?.length ?? 0) > 0 ? <span className="muted">From training</span> : renewalText(item)}</td>
                     <td>{activeAssignments(item).length}</td>
                     <td title={WARNING_STATUSES.map(s => statusDisplay(s).label).join(", ")}><WarningSummary item={item} /></td>
                     <td><button onClick={() => startEdit(item)}>Edit</button> <button onClick={() => void remove(item)}>Delete</button> <button onClick={() => void setHidden(item, !item.hidden)}>{item.hidden ? "Unhide" : "Hide"}</button></td>
