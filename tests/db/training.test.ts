@@ -170,3 +170,28 @@ describe("the Qualifications page", () => {
         expect(ifr.assignments.find((a: any) => a.userId === pilot).qualificationStatus).toBe("INCOMPLETE");
     });
 });
+
+describe("alerts", () => {
+    it("lists what is due, missing or expired for you, and for managers everyone", async () => {
+        const mine = await training.alerts(pilot);
+        expect(mine.success).toBe(true);
+        expect(mine.team).toBeNull();
+        expect(mine.windowDays).toBe(90);
+        // 135.297 is not approved yet, so IFR shows it as missing and waiting.
+        expect(mine.mine.find((a: any) => a.programCode === "135.297")).toMatchObject({ level: "MISSING", waiting: true, qualificationCode: "IFR" });
+        const team = await training.alerts(manager);
+        expect(team.team.some((a: any) => a.person.username === "pilot1")).toBe(true);
+    });
+
+    it("warns 90 days before a due date, and less when Settings turn the 90 and 60 day alerts off", async () => {
+        // 135.299 done January 2026 is due 2027-01-31: 71 days after 2026-11-21.
+        const due = (list: any[]) => list.find((a: any) => a.programCode === "135.299" && a.qualificationCode === "PIC");
+        expect(due((await training.alerts(pilot)).mine)).toMatchObject({ level: "DUE_SOON", daysLeft: 71 });
+        await db.prisma.configuration.upsert({ where: { key: "Alert90Days" }, update: { value: "FALSE" }, create: { key: "Alert90Days", value: "FALSE" } });
+        await db.prisma.configuration.upsert({ where: { key: "Alert60Days" }, update: { value: "FALSE" }, create: { key: "Alert60Days", value: "FALSE" } });
+        const later = await training.alerts(pilot);
+        expect(later.windowDays).toBe(30);
+        expect(due(later.mine)).toBeUndefined();
+        await db.prisma.configuration.deleteMany({ where: { key: { in: ["Alert90Days", "Alert60Days"] } } });
+    });
+});

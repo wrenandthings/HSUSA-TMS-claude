@@ -41,6 +41,11 @@ export default function RequirementsPage() {
     const changed = saved !== JSON.stringify(items.map((i) => `${i.type}:${i.ref}`).sort());
     const has = (type: string, ref: string) => items.some((i) => i.type === type && i.ref === ref);
     const categories = [...new Set<string>(data.programs.map((p: any) => p.category))];
+    // Qualifications that already need this one (directly or not) would make a loop.
+    const needs = new Map<string, string[]>(data.qualifications.map((q: any) => [q.code, q.requirements.filter((r: Item) => r.type === "QUALIFICATION").map((r: Item) => r.ref)]));
+    const reaches = (code: string, target: string, seen = new Set<string>()): boolean =>
+        code === target || (!seen.has(code) && (seen.add(code), (needs.get(code) ?? []).some((ref) => reaches(ref, target, seen))));
+    const canAdd = (q: any) => q.id !== selected && !has("QUALIFICATION", q.code) && !reaches(q.code, qualification?.code ?? "");
 
     function add() {
         if (!adding) return;
@@ -105,7 +110,7 @@ export default function RequirementsPage() {
                                 </optgroup>
                             ))}
                             <optgroup label="Another qualification">
-                                {data.qualifications.filter((q: any) => q.id !== selected && !has("QUALIFICATION", q.code)).map((q: any) => <option key={q.code} value={`QUALIFICATION|${q.code}`}>{q.name}</option>)}
+                                {data.qualifications.filter(canAdd).map((q: any) => <option key={q.code} value={`QUALIFICATION|${q.code}`}>{q.name}</option>)}
                             </optgroup>
                         </select>
                     </label>

@@ -22,6 +22,7 @@ function handle(channel, work) {
 
 function registerTrainingHandlers() {
     handle("training-mine", (userId) => training.myTraining(userId));
+    handle("training-alerts", (userId) => training.alerts(userId));
     handle("training-submit", (userId, input) => training.submit(userId, input));
     handle("training-withdraw", (userId, input) => training.withdraw(userId, input.recordId));
     handle("training-pending", (userId) => training.pending(userId));

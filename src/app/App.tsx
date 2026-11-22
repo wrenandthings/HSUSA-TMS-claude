@@ -10,6 +10,7 @@ import QuizzesPage from "../modules/quizzes/QuizzesPage";
 import MyTrainingPage from "../modules/training/MyTrainingPage";
 import ApprovalsPage from "../modules/training/ApprovalsPage";
 import RequirementsPage from "../modules/training/RequirementsPage";
+import AlertsPanel from "../modules/training/AlertsPanel";
 
 type Section = "home" | "training" | "approvals" | "requirements" | "quizzes" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
 
@@ -134,6 +135,7 @@ function Home(props: { username: string; sections: typeof SECTIONS; onOpen: (sec
                 <h1>Welcome, {props.username}</h1>
                 <div className="home-sub">{today}</div>
             </div>
+            <AlertsPanel onOpenTraining={() => props.onOpen("training")} />
             <div className="cards">
                 {props.sections.filter((item) => item.id !== "home").map((item) => (
                     <button key={item.id} className="card" onClick={() => props.onOpen(item.id)}>

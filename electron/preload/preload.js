@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld("hsusa", {
     finishQuiz: (sessionId) => ipcRenderer.invoke("quizzes-finish", { sessionId }),
     quizHistory: () => ipcRenderer.invoke("quizzes-history"),
     myTraining: () => ipcRenderer.invoke("training-mine"),
+    trainingAlerts: () => ipcRenderer.invoke("training-alerts"),
     recordTraining: (input) => ipcRenderer.invoke("training-submit", input),
     withdrawTraining: (recordId) => ipcRenderer.invoke("training-withdraw", { recordId }),
     pendingTraining: () => ipcRenderer.invoke("training-pending"),

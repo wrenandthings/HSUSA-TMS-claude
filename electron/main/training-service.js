@@ -3,6 +3,8 @@
 // - people record their own completed training; it counts once approved;
 // - a qualification is current only while all its requirements are.
 const { trainingStatus, combine } = require("./requirement-status");
+const { daysRemaining } = require("./qualification-status");
+const { createConfigurationService } = require("./configuration-service");
 
 const MANAGER_ROLES = ["Administrator", "Training_Manager", "Director_of_Operations", "Chief_Pilot", "Maintenance_Manager", "Quality_Control"];
 // Who may change what each qualification needs (DECISIONS.md 2026-11-21).
@@ -250,7 +252,62 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
         return { success: true, message: `${program.name}: ${months ? `every ${months} months` : "once"}.` };
     }
 
-    return { requirementsEditor, setRequirements, setRenewal, canEditRequirements, programs, myTraining, submit, withdraw, pending, review, qualificationFor, isManager };
+    // Alerts (owner decision Q23): 90/60/30/7 days before a due date, each
+    // switchable in Settings, plus anything expired, in grace or not done.
+    async function alertWindow() {
+        const config = createConfigurationService(prisma);
+        const on = await Promise.all([[90, "Alert90Days"], [60, "Alert60Days"], [30, "Alert30Days"], [7, "Alert7Days"]]
+            .map(async ([days, key]) => (String(await config.get(key)).toUpperCase() === "TRUE" ? days : 0)));
+        return Math.max(0, ...on);
+    }
+
+    function alertsFor(ctx, person, window, today) {
+        const out = [];
+        for (const q of ctx.qualifications.values()) {
+            const assignment = ctx.assignments.get(q.id);
+            if (!assignment || q.requirements.length === 0) continue;
+            const result = evaluate(ctx, q.code, today);
+            if (result.status === "SUSPENDED") continue;
+            for (const item of result.items) {
+                if (item.type !== "TRAINING") continue;
+                const base = { person, qualification: q.name, qualificationCode: q.code, training: item.name, programCode: item.code, dueDate: item.dueDate ?? null, graceEnd: item.graceEnd ?? null, waiting: Boolean(item.waiting) };
+                if (item.status === "MISSING") out.push({ ...base, level: "MISSING", daysLeft: null });
+                else if (item.status === "EXPIRED") out.push({ ...base, level: "EXPIRED", daysLeft: daysRemaining(item.dueDate, today) });
+                else if (item.dueDate) {
+                    const days = daysRemaining(item.dueDate, today);
+                    if (item.inGrace) out.push({ ...base, level: "GRACE", daysLeft: days });
+                    else if (days <= window) out.push({ ...base, level: days <= 7 ? "DUE_7" : days <= 30 ? "DUE_30" : "DUE_SOON", daysLeft: days });
+                }
+            }
+        }
+        return out;
+    }
+
+    const LEVEL_ORDER = { EXPIRED: 0, GRACE: 1, MISSING: 2, DUE_7: 3, DUE_30: 4, DUE_SOON: 5 };
+    const byUrgency = (a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level] || (a.daysLeft ?? 0) - (b.daysLeft ?? 0) || a.person.name.localeCompare(b.person.name);
+
+    // Your own alerts, and for managers everyone's.
+    async function alerts(userId) {
+        if (!userId) return fail("Authentication required");
+        const today = now();
+        const window = await alertWindow();
+        const me = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, firstName: true, lastName: true } });
+        const label = (u) => ({ id: u.id, username: u.username, name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.username });
+        const mine = alertsFor(await context(userId), label(me), window, today).sort(byUrgency);
+        let team = null;
+        if (await isManager(userId)) {
+            const holders = await prisma.user.findMany({
+                where: { status: "ACTIVE", id: { not: userId }, qualifications: { some: { status: "ACTIVE" } } },
+                select: { id: true, username: true, firstName: true, lastName: true }
+            });
+            team = [];
+            for (const u of holders) team.push(...alertsFor(await context(u.id), label(u), window, today));
+            team.sort(byUrgency);
+        }
+        return { success: true, windowDays: window, mine, team };
+    }
+
+    return { alerts, requirementsEditor, setRequirements, setRenewal, canEditRequirements, programs, myTraining, submit, withdraw, pending, review, qualificationFor, isManager };
 }
 
 module.exports = { createTrainingService, parseDay };
