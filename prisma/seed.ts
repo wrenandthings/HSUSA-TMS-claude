@@ -187,7 +187,12 @@ const DOCUMENTS = [
     { code: "OM-B", title: "Operations Manual Part B (AW169 Aircraft SOP)" },
     // Source documents of the maintenance question banks (Quail, 2026-11-20).
     { code: "AMP", title: "Aircraft Maintenance Program" },
-    { code: "AMPI", title: "Aircraft Maintenance Planning Information" }
+    { code: "AMPI", title: "Aircraft Maintenance Planning Information" },
+    // Quail, 2026-11-21 evening: four more banks.
+    { code: "SAR-HEC", title: "SAR/HEC Manual - Quonset Operations" },
+    { code: "HOIST", title: "Helicopter Hoist SOP and Rotorcraft Load Combination Flight Manual (RLCFM)" },
+    { code: "GOM", title: "Ground Operations Manual (US)" },
+    { code: "HUMS", title: "HUMS Manual" }
 ];
 
 async function seedDocuments() {
@@ -257,7 +262,12 @@ const SUBJECTS = [
     { code: "AW169", subjectName: "AW169" },
     // Owner, 2026-11-21: "For now make OM-D its own subject until I get more
     // information from our manuals and processes."
-    { code: "OMD", subjectName: "Operations Manual Part D" }
+    { code: "OMD", subjectName: "Operations Manual Part D" },
+    // Owner, 2026-11-21 (via Quail): hoist and SAR are separate subjects.
+    { code: "SAR", subjectName: "Search and Rescue" },
+    { code: "HOIST", subjectName: "Hoist Operations (HHO)" },
+    // Quail, 2026-11-21: Ground Operations Manual bank.
+    { code: "GROUND_OPS", subjectName: "Ground Operations" }
 ];
 
 async function seedSubjects() {

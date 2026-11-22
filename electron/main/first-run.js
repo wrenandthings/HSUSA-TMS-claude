@@ -1,8 +1,11 @@
 // Setting up the database of an installed copy (no Prisma command-line tools
 // there). On each start: apply any new migrations, recorded in Prisma's own
 // _prisma_migrations table so `prisma migrate` would agree; after a new
-// migration, run the seed (safe to repeat); and if the question bank is empty,
-// import the bundled banks so testers have questions straight away.
+// migration, run the seed (safe to repeat); and import each bundled question
+// bank whose file is new or changed since it was last imported, so testers
+// get Quail's new banks with each new installer. A changed file updates its
+// questions by questionId (the importer's rule), so an edit made in the app to
+// one of those questions is replaced when its bank file changes.
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
@@ -43,12 +46,24 @@ async function applyMigrations(prisma, folder, log = () => {}) {
     return applied;
 }
 
-async function importBundledBanks(prisma, folder, importer) {
-    if ((await prisma.question.count()) > 0 || !fs.existsSync(folder)) return 0;
+async function importBundledBanks(prisma, folder, importer, log = () => {}) {
+    if (!fs.existsSync(folder)) return 0;
     let created = 0;
     for (const file of fs.readdirSync(folder).filter((n) => n.toLowerCase().endsWith(".csv")).sort()) {
-        const result = await importer.importCsv(fs.readFileSync(path.join(folder, file), "utf8"));
-        if (result?.success) created += result.created ?? 0;
+        const text = fs.readFileSync(path.join(folder, file), "utf8");
+        const checksum = crypto.createHash("sha256").update(text).digest("hex");
+        const key = `BundledBank:${file}`;
+        const seen = await prisma.configuration.findUnique({ where: { key } });
+        if (seen?.value === checksum) continue;
+        const result = await importer.importCsv(text);
+        if (!result?.success) { log(file, result); continue; }
+        created += result.created ?? 0;
+        await prisma.configuration.upsert({
+            where: { key },
+            update: { value: checksum },
+            create: { key, value: checksum, description: "Bundled question bank last imported (first-run.js)" }
+        });
+        log(file, result);
     }
     return created;
 }
@@ -59,7 +74,8 @@ async function prepareDatabase(prisma, { migrationsFolder, banksFolder, seed, im
         await seed(prisma);
         logger?.application("DATABASE_SEEDED", { after: applied });
     }
-    const imported = await importBundledBanks(prisma, banksFolder, importer);
+    const imported = await importBundledBanks(prisma, banksFolder, importer,
+        (file, result) => logger?.application(result?.success ? "QUESTION_BANK_IMPORTED" : "QUESTION_BANK_IMPORT_FAILED", { file, created: result?.created, updated: result?.updated, message: result?.message }));
     if (imported) logger?.application("QUESTION_BANKS_IMPORTED", { created: imported });
     return { applied, imported };
 }

@@ -53,12 +53,21 @@ describe("first start of an installed copy", () => {
         expect(admin.mustChangePassword).toBe(true);
     });
 
-    it("does nothing the second time, then imports the bundled banks into an empty bank", async () => {
+    it("imports every bundled bank once, and again only when its file changes", async () => {
         expect(await applyMigrations(fresh, migrations)).toEqual([]);
-        const result = await prepareDatabase(fresh, { migrationsFolder: migrations, banksFolder: banks, seed, importer: createQuestionBankImporter(fresh) });
+        const failures: string[] = [];
+        const options = { migrationsFolder: migrations, banksFolder: banks, seed, importer: createQuestionBankImporter(fresh),
+            logger: { application: (event: string, data: any) => { if (event === "QUESTION_BANK_IMPORT_FAILED") failures.push(`${data.file}: ${data.message}`); } } };
+        const result = await prepareDatabase(fresh, options);
+        expect(failures).toEqual([]);
         expect(result.applied).toEqual([]);
-        expect(result.imported).toBeGreaterThan(2000);
-        const again = await prepareDatabase(fresh, { migrationsFolder: migrations, banksFolder: banks, seed, importer: createQuestionBankImporter(fresh) });
-        expect(again.imported).toBe(0);
-    }, 120000);
+        expect(result.imported).toBeGreaterThan(2900); // nine banks, 2,940 questions
+        expect((await prepareDatabase(fresh, options)).imported).toBe(0);
+        const codes = (await fresh.document.findMany({ where: { questions: { some: {} } }, select: { code: true } })).map((d) => d.code).sort();
+        expect(codes).toEqual(expect.arrayContaining(["GOM", "HOIST", "HUMS", "SAR-HEC"]));
+        // A changed file is imported again; unchanged files are skipped.
+        await fresh.configuration.update({ where: { key: "BundledBank:HUMS_question_bank.csv" }, data: { value: "old" } });
+        expect((await prepareDatabase(fresh, options)).imported).toBe(0); // same questions: updated, none created
+        expect((await fresh.configuration.findUniqueOrThrow({ where: { key: "BundledBank:HUMS_question_bank.csv" } })).value).not.toBe("old");
+    }, 180000);
 });
