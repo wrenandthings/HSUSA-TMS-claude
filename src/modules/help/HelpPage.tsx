@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { marked } from "marked";
+import { renderGuide } from "./renderGuide";
 import gettingStarted from "../../help/getting-started.md?raw";
 import completeDocumentation from "../../help/complete-documentation.md?raw";
 
@@ -8,39 +8,20 @@ import completeDocumentation from "../../help/complete-documentation.md?raw";
 // The master copies are Claude docs; to update, export each as Markdown and
 // replace the file in src/help/ (documents/GUIDES.md).
 
-interface Heading { id: string; text: string; level: number; }
-
-const slug = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
 export default function HelpPage(props: { isAdministrator: boolean }) {
     const guides = [
         { id: "start", label: "Getting Started", text: gettingStarted },
         ...(props.isAdministrator ? [{ id: "complete", label: "Complete Documentation", text: completeDocumentation }] : [])
     ];
     const [guideId, setGuideId] = useState("start");
-    const [headings, setHeadings] = useState<Heading[]>([]);
     const [search, setSearch] = useState("");
     const content = useRef<HTMLDivElement>(null);
     const guide = guides.find((g) => g.id === guideId) ?? guides[0];
     // The guides are our own text, bundled with the app.
-    const html = useMemo(() => marked.parse(guide.text, { async: false }) as string, [guide.text]);
+    const { html, headings } = useMemo(() => renderGuide(guide.text), [guide.text]);
 
-    // Give every section heading an id, and list them for the contents.
-    useEffect(() => {
-        const root = content.current;
-        if (!root) return;
-        const seen = new Set<string>();
-        const found: Heading[] = [];
-        root.querySelectorAll("h2, h3").forEach((el) => {
-            let id = slug(el.textContent ?? "");
-            while (seen.has(id)) id += "-x";
-            seen.add(id);
-            el.id = id;
-            found.push({ id, text: el.textContent ?? "", level: el.tagName === "H2" ? 2 : 3 });
-        });
-        setHeadings(found);
-        root.scrollTop = 0;
-    }, [html]);
+    // A different guide starts at its top.
+    useEffect(() => { if (content.current) content.current.scrollTop = 0; }, [html]);
 
     // Highlight matches, and jump to the first.
     useEffect(() => {
@@ -70,8 +51,11 @@ export default function HelpPage(props: { isAdministrator: boolean }) {
         first?.scrollIntoView({ block: "center" });
     }, [search, html]);
 
+    // Scroll the guide (its own scroll area) to a section.
     function jump(id: string) {
-        document.getElementById(id)?.scrollIntoView({ block: "start" });
+        const root = content.current;
+        const target = root?.querySelector<HTMLElement>(`[id="${id}"]`);
+        if (root && target) root.scrollTo({ top: target.offsetTop - 16, behavior: "smooth" });
     }
 
     return (
