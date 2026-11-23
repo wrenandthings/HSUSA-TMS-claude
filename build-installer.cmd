@@ -81,9 +81,28 @@ call npx prisma generate || goto :failed
 echo  [4/4] Building the installer. This takes a few minutes ...
 call npm run dist || goto :failed
 
+rem 5. A desktop shortcut to the newest setup file, so it is easy to find
+rem    and share. Each build replaces it.
+set "SETUP="
+for /f "delims=" %%f in ('dir /b /o-d "release\HSUSA-TMS-Setup-*.exe" 2^>nul') do (
+    set "SETUP=%%f"
+    goto :shortcut
+)
+:shortcut
+if defined SETUP (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$d = [Environment]::GetFolderPath('Desktop'); $s = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d 'HSUSA TMS Setup.lnk')); $s.TargetPath = '%CD%\release\%SETUP%'; $s.WorkingDirectory = '%CD%\release'; $s.IconLocation = '%CD%\build\icon.ico'; $s.Description = 'HSUSA TMS installer, built ' + (Get-Date -Format 'yyyy-MM-dd HH:mm'); $s.Save()" >nul 2>nul
+    if errorlevel 1 (
+        echo  The desktop shortcut could not be made. The installer is still in
+        echo  the release folder.
+    ) else (
+        echo  A shortcut called "HSUSA TMS Setup" is on your desktop. It always
+        echo  points at the newest installer: %SETUP%
+    )
+)
+
 echo.
 echo  Done. The installer is in the "release" folder, which opens now:
-echo  HSUSA-TMS-Setup-*.exe
+echo  %SETUP%
 echo.
 echo  It is not signed, so Windows may say "Windows protected your PC".
 echo  Click "More info", then "Run anyway".
