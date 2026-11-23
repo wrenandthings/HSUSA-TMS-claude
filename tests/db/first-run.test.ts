@@ -12,7 +12,7 @@ const require = createRequire(import.meta.url);
 const root = path.resolve(__dirname, "../..");
 const { prepareDatabase, applyMigrations } = require(path.join(root, "electron/main/first-run.js"));
 const { createQuestionBankImporter } = require(path.join(root, "electron/main/question-bank.js"));
-const { seed } = require(path.join(root, "prisma/seed.ts"));
+const { seed, SEED_VERSION } = require(path.join(root, "prisma/seed.ts"));
 const migrations = path.join(root, "prisma/migrations");
 const banks = path.join(root, "documents/question-banks");
 
@@ -41,7 +41,7 @@ const schema = async (prisma: PrismaClient) => {
 
 describe("first start of an installed copy", () => {
     it("builds the same tables, columns and indexes as prisma migrate deploy", async () => {
-        const result = await prepareDatabase(fresh, { migrationsFolder: migrations, banksFolder: path.join(dir, "no-banks"), seed, importer: createQuestionBankImporter(fresh) });
+        const result = await prepareDatabase(fresh, { migrationsFolder: migrations, banksFolder: path.join(dir, "no-banks"), seed, seedVersion: SEED_VERSION, importer: createQuestionBankImporter(fresh) });
         expect(result.applied.length).toBeGreaterThan(10);
         expect(await schema(fresh)).toEqual(await schema(reference.prisma));
     }, 60000);
@@ -51,6 +51,22 @@ describe("first start of an installed copy", () => {
         expect(await fresh.trainingProgram.count()).toBeGreaterThan(20);
         const admin = await fresh.user.findUniqueOrThrow({ where: { username: "admin" } });
         expect(admin.mustChangePassword).toBe(true);
+    });
+
+    it("adds the testing account User, a Pilot with a blank password, and re-seeds when the seed version rises", async () => {
+        const { checkPassword } = require(path.join(root, "electron/main/passwords.js"));
+        const user = await fresh.user.findUniqueOrThrow({ where: { username: "User" }, include: { userRoles: { include: { role: true } } } });
+        expect(user.mustChangePassword).toBe(false);
+        expect((await checkPassword(user.passwordHash, "")).matches).toBe(true);
+        expect(user.userRoles.map((r) => r.role.roleName)).toEqual(["Pilot"]);
+        // An existing install without the account gets it once the seed version rises.
+        await fresh.userRole.deleteMany({ where: { userId: user.id } });
+        await fresh.user.delete({ where: { id: user.id } });
+        const options = { migrationsFolder: migrations, banksFolder: path.join(dir, "no-banks"), seed, importer: createQuestionBankImporter(fresh) };
+        await prepareDatabase(fresh, { ...options, seedVersion: SEED_VERSION });
+        expect(await fresh.user.count({ where: { username: "User" } })).toBe(0); // same version: not re-seeded
+        await prepareDatabase(fresh, { ...options, seedVersion: SEED_VERSION + 1 });
+        expect(await fresh.user.count({ where: { username: "User" } })).toBe(1);
     });
 
     it("imports every bundled bank once, and again only when its file changes", async () => {

@@ -152,6 +152,7 @@ async function main() {
     await seedSubjects();
     await seedDocuments();
     await seedRequirements();
+    await seedTestUser();
     await seedPermissions(adminRole);
 
     console.log("Seed Complete");
@@ -362,13 +363,31 @@ async function seedRequirements() {
     }
 }
 
+// TESTING ONLY (owner, 2026-11-22): a default ordinary user for testers,
+// username "User" with a blank password and the Pilot role. Created only if
+// missing, so a tester's own password is kept. Remove before going live
+// (tracked in documents/DECISIONS.md and agents/finch/project.md).
+async function seedTestUser() {
+    const existing = await prisma.user.findUnique({ where: { username: "User" } });
+    if (existing) return;
+    const user = await prisma.user.create({
+        data: { username: "User", firstName: "Test", lastName: "User", passwordHash: await hashPassword(""), mustChangePassword: false, status: "ACTIVE" }
+    });
+    const pilot = await prisma.role.findUnique({ where: { roleName: "Pilot" } });
+    if (pilot) await prisma.userRole.create({ data: { userId: user.id, roleId: pilot.id } });
+}
+
+// Raise this when the seed adds something installed copies should get
+// without a new migration (electron/main/first-run.js compares it).
+const SEED_VERSION = 2;
+
 // Safe to run again: everything is created only if missing.
 async function seed(client: any) {
     prisma = client;
     await main();
 }
 
-module.exports = { seed };
+module.exports = { seed, SEED_VERSION };
 
 // `npx prisma db seed` runs this file directly.
 if (require.main === module) {

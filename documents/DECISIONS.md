@@ -4,6 +4,12 @@ The Word documents in this folder are the original baseline. When the owner
 decides something that differs from them, it is recorded here, newest first.
 Each entry says which document it changes.
 
+## 2026-11-22: Testing account "User" with a blank password
+
+- Owner: "for testing it needs a default normal user. make it User, and make the password blank."
+- The seed creates username `User` (Test User), role Pilot, blank password, no forced change; only if missing, so a tester's own password is kept. Installed copies get it at their next start (seed version 2).
+- TESTING ONLY. Remove before going live, together with the dev copy's blank admin password.
+
 ## 2026-11-21: Long-term direction: a web application hosted on the internet
 
 - Owner, 23:08: "eventually hosted on the internet will probably be the best option for the company due to us not having any in office IT and being in many locations."

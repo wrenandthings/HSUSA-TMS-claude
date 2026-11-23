@@ -68,11 +68,19 @@ async function importBundledBanks(prisma, folder, importer, log = () => {}) {
     return created;
 }
 
-async function prepareDatabase(prisma, { migrationsFolder, banksFolder, seed, importer, logger }) {
+async function prepareDatabase(prisma, { migrationsFolder, banksFolder, seed, seedVersion = 1, importer, logger }) {
     const applied = await applyMigrations(prisma, migrationsFolder, (name) => logger?.application("MIGRATION_APPLIED", { name }));
-    if (applied.length > 0 || (await prisma.user.count()) === 0) {
+    // Seed after a new migration, on a new database, or when the seed itself
+    // has new content (its SEED_VERSION was raised).
+    const stored = await prisma.configuration.findUnique({ where: { key: "SeedVersion" } });
+    if (applied.length > 0 || (await prisma.user.count()) === 0 || stored?.value !== String(seedVersion)) {
         await seed(prisma);
-        logger?.application("DATABASE_SEEDED", { after: applied });
+        await prisma.configuration.upsert({
+            where: { key: "SeedVersion" },
+            update: { value: String(seedVersion) },
+            create: { key: "SeedVersion", value: String(seedVersion), description: "Seed content last applied (first-run.js)" }
+        });
+        logger?.application("DATABASE_SEEDED", { after: applied, seedVersion });
     }
     const imported = await importBundledBanks(prisma, banksFolder, importer,
         (file, result) => logger?.application(result?.success ? "QUESTION_BANK_IMPORTED" : "QUESTION_BANK_IMPORT_FAILED", { file, created: result?.created, updated: result?.updated, message: result?.message }));

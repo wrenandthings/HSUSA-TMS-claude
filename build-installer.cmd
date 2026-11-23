@@ -30,8 +30,34 @@ if not errorlevel 1 (
     goto :stop
 )
 
-rem 2. Latest code and packages.
+rem 2. Tools this needs on a new computer: Node.js 22 (LTS) or newer.
+where node >nul 2>nul
+if errorlevel 1 (
+    echo  Node.js is not installed. Install the LTS version from nodejs.org,
+    echo  then run this again.
+    goto :stop
+)
+for /f "tokens=1 delims=." %%v in ('node -p "process.versions.node"') do set NODE_MAJOR=%%v
+if %NODE_MAJOR% LSS 22 (
+    echo  This needs Node.js 22 or newer. Install the LTS version from
+    echo  nodejs.org, then run this again.
+    goto :stop
+)
+
+rem 3. Latest code. A folder downloaded as a ZIP has no git history, so it
+rem    builds what was downloaded.
 echo  [1/4] Getting the latest code ...
+if not exist ".git" (
+    echo  This folder was not cloned with git, so it cannot update itself.
+    echo  Building the code that is here.
+    goto :packages
+)
+where git >nul 2>nul
+if errorlevel 1 (
+    echo  Git is not installed, so the code cannot be updated. Building the
+    echo  code that is here. Install Git from git-scm.com to update it.
+    goto :packages
+)
 git diff --quiet -- package-lock.json || git checkout -- package-lock.json
 git pull --ff-only
 if errorlevel 1 (
@@ -39,6 +65,7 @@ if errorlevel 1 (
     echo  git pull did not work. Tell Finch which files it names.
     goto :stop
 )
+:packages
 echo  [2/4] Installing packages. This can take a few minutes ...
 call npm ci
 if errorlevel 1 (
@@ -48,7 +75,7 @@ if errorlevel 1 (
     goto :stop
 )
 
-rem 3. Database code for Windows, then the installer.
+rem 4. Database code for Windows, then the installer.
 echo  [3/4] Preparing the database code ...
 call npx prisma generate || goto :failed
 echo  [4/4] Building the installer. This takes a few minutes ...

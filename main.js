@@ -58,6 +58,7 @@ async function prepareInstalledDatabase() {
             migrationsFolder: path.join(__dirname, "prisma", "migrations"),
             banksFolder: path.join(__dirname, "documents", "question-banks"),
             seed: require("./dist-electron/seed.cjs").seed,
+            seedVersion: require("./dist-electron/seed.cjs").SEED_VERSION,
             importer: createQuestionBankImporter(prisma),
             logger: getLogger()
         });
