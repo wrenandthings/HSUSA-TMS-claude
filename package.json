@@ -37,6 +37,7 @@
     "electron": "^44.2.0",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
+    "marked": "^18.2.1",
     "prisma": "^6.15.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

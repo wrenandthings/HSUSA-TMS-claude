@@ -73,9 +73,38 @@ async function prepareInstalledDatabase() {
     }
 }
 
+// Started from the "Reset HSUSA TMS admin password" shortcut (electron/main/admin-reset.js).
+async function resetAdminIfAsked() {
+    if (!process.argv.includes("--reset-admin")) return;
+    const choice = dialog.showMessageBoxSync({
+        type: "warning",
+        title: "Reset the admin password",
+        message: "Reset the admin account's password?",
+        detail: "The account \"admin\" gets the starting password CHANGE_ME and must choose a new one at its next sign-in. Nothing else changes.",
+        buttons: ["Reset password", "Cancel"],
+        defaultId: 1,
+        cancelId: 1
+    });
+    if (choice !== 0) return;
+    const { PrismaClient } = require("@prisma/client");
+    const { resetAdmin } = require("./electron/main/admin-reset");
+    const prisma = new PrismaClient();
+    try {
+        const result = await resetAdmin(prisma);
+        getLogger().security("ADMIN_PASSWORD_RESET", { recreated: result.created });
+        dialog.showMessageBoxSync({ type: "info", title: "Admin password reset", message: "Done.", detail: "Sign in as admin with the password CHANGE_ME, then choose a new password.", buttons: ["OK"] });
+    } catch (error) {
+        getLogger().failure("ADMIN_PASSWORD_RESET_FAILED", error);
+        dialog.showErrorBox("Admin password not reset", error.message);
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
 app.whenReady().then(async () => {
     getLogger().application("APP_STARTED", { version: app.getVersion(), installed: app.isPackaged });
     if (!(await prepareInstalledDatabase())) return;
+    await resetAdminIfAsked();
     registerUserHandlers();
     registerSubjectHandlers();
     registerQuestionHandlers();

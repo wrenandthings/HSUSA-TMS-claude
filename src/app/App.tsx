@@ -14,8 +14,9 @@ import RequirementsPage from "../modules/training/RequirementsPage";
 import AlertsPanel from "../modules/training/AlertsPanel";
 import FlashcardsPage from "../modules/flashcards/FlashcardsPage";
 import ProgressPage from "../modules/progress/ProgressPage";
+import HelpPage from "../modules/help/HelpPage";
 
-type Section = "home" | "training" | "approvals" | "requirements" | "quizzes" | "flashcards" | "progress" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
+type Section = "home" | "training" | "approvals" | "requirements" | "quizzes" | "flashcards" | "progress" | "help" | "qualifications" | "questions" | "subjects" | "users" | "roles" | "settings";
 
 // The sidebar, in the order of the approved design (2026-11-20).
 const SECTIONS: { id: Section; label: string; description: string }[] = [
@@ -31,6 +32,7 @@ const SECTIONS: { id: Section; label: string; description: string }[] = [
     { id: "subjects", label: "Subjects", description: "The subjects questions belong to, such as MAINT or OMA." },
     { id: "users", label: "Users", description: "Accounts, roles, temporary passwords and each person's qualifications." },
     { id: "roles", label: "Roles", description: "The roles that decide what each person may change." },
+    { id: "help", label: "Help", description: "How to use HSUSA TMS, step by step. Administrators also find the complete documentation here." },
     { id: "settings", label: "Settings", description: "Sign-out time, password rules, alerts and record keeping. Administrators can change them." }
 ];
 
@@ -50,11 +52,13 @@ export default function App() {
     // A flashcard set made from a quiz's results opens on the Flashcards page.
     const [flashcardStart, setFlashcardStart] = useState<{ id: string; note: string } | null>(null);
     const [canEditRequirements, setCanEditRequirements] = useState(false);
+    const [isAdministrator, setIsAdministrator] = useState(false);
     const [waiting, setWaiting] = useState(0);
     async function refreshTraining() {
         const result = await window.hsusa.myTraining?.();
         setCanApprove(Boolean(result?.canApprove));
         setCanEditRequirements(Boolean(result?.canEditRequirements));
+        setIsAdministrator(Boolean(result?.isAdministrator));
         setWaiting(result?.pendingToReview ?? 0);
     }
     useEffect(() => { if (loggedIn) void refreshTraining(); }, [loggedIn, section]);
@@ -94,6 +98,7 @@ export default function App() {
     else if (section === "qualifications") page = <QualificationListPage key={visit} onBack={goHome} />;
     else if (section === "quizzes") page = <QuizzesPage key={visit} onOpenFlashcards={(id, note) => { open("flashcards"); setFlashcardStart({ id, note }); }} />;
     else if (section === "progress") page = <ProgressPage key={visit} />;
+    else if (section === "help") page = <HelpPage key={visit} isAdministrator={isAdministrator} />;
     else if (section === "flashcards") page = <FlashcardsPage key={visit} initialSessionId={flashcardStart?.id} initialNote={flashcardStart?.note} />;
     else if (section === "requirements") page = <RequirementsPage key={visit} />;
     else if (section === "training") page = <MyTrainingPage key={visit} />;

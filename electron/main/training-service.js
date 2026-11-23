@@ -123,6 +123,7 @@ function createTrainingService(prisma, { now = () => new Date() } = {}) {
             canEditRequirements: canEdit,
             canWaive: await hasRole(userId, WAIVER_ROLES),
             canOverride: await hasRole(userId, OVERRIDE_ROLES),
+            isAdministrator: await hasRole(userId, ["Administrator"]),
             pendingToReview: canApprove ? await prisma.userTrainingRecord.count({ where: { approval: "PENDING", userId: { not: userId } } }) : 0,
             qualifications: mine.map((q) => evaluate(ctx, q.code, today)),
             records: records.map((r) => ({

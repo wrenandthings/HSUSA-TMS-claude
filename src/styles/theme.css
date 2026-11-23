@@ -298,3 +298,24 @@ th, td {
 
 /* Count of records waiting, beside a sidebar item. */
 .nav-count { display: inline-block; margin-left: 8px; min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--red, #D23641); color: #fff; font-size: 12px; font-weight: 700; text-align: center; }
+
+/* Help page (src/modules/help/HelpPage.tsx). */
+.help-layout { display: flex; gap: 24px; align-items: flex-start; padding: 32px 40px; max-width: 1240px; }
+.help-contents { position: sticky; top: 24px; width: 260px; flex: 0 0 260px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 48px); overflow-y: auto; }
+.help-tabs { display: flex; flex-direction: column; gap: 6px; }
+.help-contents nav { display: flex; flex-direction: column; gap: 2px; }
+.help-heading { text-align: left; padding: 4px 6px; font-size: 13px; line-height: 1.35; border-radius: 6px; }
+.help-heading.level-2 { font-weight: 600; margin-top: 6px; }
+.help-heading.level-3 { padding-left: 18px; color: var(--slate, #5B6B82); }
+.help-content { flex: 1; min-width: 0; background: #FFFFFF; border: 1px solid var(--line, #DDE3EC); border-radius: 12px; padding: 32px 40px; line-height: 1.6; font-size: 15px; }
+.help-content h1 { margin-top: 0; }
+.help-content h2 { margin-top: 36px; padding-top: 12px; border-top: 1px solid var(--line, #DDE3EC); scroll-margin-top: 16px; }
+.help-content h3 { margin-top: 24px; scroll-margin-top: 16px; }
+.help-content table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 14px; }
+.help-content th, .help-content td { border: 1px solid var(--line, #DDE3EC); padding: 8px 10px; text-align: left; vertical-align: top; }
+.help-content th { background: var(--off-white, #F6F8FB); }
+.help-content code { background: var(--off-white, #F6F8FB); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+.help-content mark.help-hit { background: #FFE58A; padding: 0 1px; }
+.help-contents nav .help-heading { border: none; background: transparent; box-shadow: none; min-height: 0; width: 100%; color: var(--navy, #1A2741); }
+.help-contents nav .help-heading.level-3 { color: var(--slate, #5B6B82); font-weight: 400; }
+.help-contents nav .help-heading:hover { background: var(--off-white, #EEF2F7); text-decoration: none; }
