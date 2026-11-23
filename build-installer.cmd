@@ -75,6 +75,11 @@ if errorlevel 1 (
     goto :stop
 )
 
+rem A broken package.json in a folder above the project stops the build
+rem (the bundler reads them). Name it instead of failing halfway.
+node scripts\check-parent-package-json.js "%CD%"
+if errorlevel 1 goto :stop
+
 rem 4. Database code for Windows, then the installer.
 echo  [3/4] Preparing the database code ...
 call npx prisma generate || goto :failed
