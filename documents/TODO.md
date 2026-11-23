@@ -1,28 +1,35 @@
-# HSUSA-TMS Worklist
+# HSUSA TMS: what is done and what is next
 
-## Completed
+Updated 2026-11-23. Phases follow the Implementation Plan v1.0.
 
-- CSV question import and export validation.
-- User switching/logout control.
-- Qualification catalog CRUD and many-to-many user assignment workflow.
-- Qualification Specification v1.0.
+## Done
 
-## Current priority
+- Phase 0-2: set-up, database, sign-in, users and roles (permissions checked in the back end).
+- Phase 3: subjects, manuals, question bank, CSV import and export (12 banks, 3,275 questions).
+- Phase 4: quizzes (Random, Weak areas, Unseen, Certification).
+- Phase 5: flashcards.
+- Phase 6: qualifications built from requirements, training records with approval, waivers and overrides, alerts 90/60/30/7 days.
+- Phase 8 (basic): Progress page (coverage, knowledge, readiness, weak areas).
+- Phase 10 (part): settings, daily backups, logs, audit trail.
+- Windows installer (per-user, unsigned for testing), app icon, Help page, admin password reset shortcut.
 
-- Implement the Qualification Specification v1.0 expiration states, including the 30-day warning and 7-day critical warning.
-- Preserve assignment history when users are unassigned or assignments are completed.
-- Apply role-aware visibility for qualifications, assignments, and self-service views.
+## Before the testing release
 
-## Deferred
+- [ ] Owner's sign-off after trying the installed app.
+- [ ] Remove the dev copy's test PIC and IFR assignments on admin.
 
-- Define and implement qualification approval workflow after the business process is established.
+## Before going live
 
-## Backlog
+- [ ] Remove the testing account `User` (blank password) and the dev copy's blank admin password.
+- [ ] Polish and finalize the two guides; export them into `src/help/`.
+- [ ] Decide shared data / the hosted web application (`documents/DECISIONS.md`).
+- [ ] Code-sign the installer (a paid certificate; owner's decision).
 
-- Replace plain-text password comparison/storage with a password hashing strategy.
-- Add actor/user identity and before/after details to audit records.
-- Enforce authorization consistently for roles, subjects, and question administration.
-- Build quiz engine.
-- Build flashcard engine.
-- Build analytics and recommendation engine.
-- Build dashboard after readiness and coverage data are available.
+## Later
+
+- Phase 7: open a question's manual reference at its PDF page.
+- Phase 8: readiness beyond the basic Progress page.
+- Phase 9: reports (PDF, CSV, Excel).
+- Phase 10: restore a backup from the app; audit log viewer; delete audit records after the retention period.
+- Mechanic-only view; Return to Service requirements (to be confirmed).
+- COMM (80) and MGMT (50) questions: only in the old Excel files in `documents/`; no CSV bank yet.

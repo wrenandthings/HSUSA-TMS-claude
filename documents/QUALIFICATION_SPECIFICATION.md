@@ -1,9 +1,9 @@
 # Qualification Specification
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Status:** Authoritative  
 **Owner:** HSUSA TMS  
-**Effective date:** 2026-11-17  
+**Effective date:** 2026-11-23  
 
 ## 1. Purpose
 
@@ -51,6 +51,8 @@ Removing a qualification from a user's active assignments changes the assignment
 
 ## 4. Status and expiration rules
 
+**Since 2026-11-21 (owner decision, documents/DECISIONS.md):** a qualification that has requirements takes each person's status from their approved training instead: it is current only while every requirement is current, and expires when the first one does. Due dates fall at the end of the month with one month of grace; waivers and overrides can count a requirement or a qualification as current until an end date. The full rules are in *HSUSA TMS: Complete Documentation*, section 3, and in `electron/main/requirement-status.js` and `electron/main/training-service.js`. The rules below still apply to a qualification with no requirements.
+
 Each person's qualification status is calculated from the expiration date of their assignment unless that assignment is manually suspended. Days are counted in whole calendar days.
 
 - An assignment with no expiration date remains `CURRENT` indefinitely.
@@ -80,9 +82,7 @@ The application must not expose password data or other restricted user administr
 
 ## 6. Approval workflow
 
-Approval workflow is deferred from version 1.0. No approval state, approval authority, approval queue, or approval requirement should be required for the initial implementation.
-
-Approval behavior may be introduced in a later specification version after the business process is defined.
+Since 2026-11-21 (owner decision): people record their own completed training, and it counts only once one of the six manager roles (Administrator, Training Manager, Director of Operations, Chief Pilot, Maintenance Manager, Quality Control) approves it. Nobody approves their own; a rejection needs a reason; every approval and rejection is audited. Waivers of one requirement need the Director of Operations or an Administrator; overriding a whole qualification needs an Administrator (Qualification Approval Matrix).
 
 ## 7. Readiness interpretation
 
@@ -127,3 +127,4 @@ If some actor or before/after fields are not yet available, the event must still
 | 1.0 | 2026-09-19 | Authoritative | Defined reusable qualifications, many-to-many assignments, 30/7-day expiration warnings, visibility, retained assignment history, and deferred approval workflow. |
 | 1.1 | 2026-11-17 | Authoritative | Owner decision: dates, status, and suspension are per person (on the assignment), matching the Prisma Schema and Qualification Rules Matrix. Definitions gain a code, renewal period, and active flag. Definitions with history cannot be deleted. Calendar-day counting stated. Edited by Finch (AI assistant). |
 | 1.2 | 2026-11-20 | Authoritative | Owner decisions 2026-11-19: all qualifications are visible to all users; qualification managers are Administrator, Training Manager, Director of Operations, Chief Pilot, Maintenance Manager and Quality Control (the last two are new roles). Edited by Finch (AI assistant). |
+| 1.3 | 2026-11-23 | Authoritative | Sections 4 and 6 brought in line with the owner's decisions of 2026-11-21: status from requirements and approved training; training approval; waivers and overrides. | Edited by Finch (AI assistant).
