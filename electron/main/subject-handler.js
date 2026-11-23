@@ -1,5 +1,8 @@
 const { ipcMain } = require("electron");
 const { PrismaClient } = require("@prisma/client");
+const { guarded } = require("./require-role");
+// Same people who manage the question bank (question-handler.js).
+const SUBJECT_MANAGER_ROLES = ["Administrator", "Director_of_Operations", "Chief_Pilot", "Training_Manager"];
 
 const prisma = new PrismaClient();
 
@@ -28,15 +31,21 @@ async function duplicateOf(subject, exceptId) {
 }
 
 function registerSubjectHandlers() {
-    ipcMain.handle("subjects-get-all", async () =>
+    const WRITE = new Set(["subjects-create", "subjects-update", "subjects-delete"]);
+    const ipc = {
+        handle: (channel, fn) => ipcMain.handle(channel, WRITE.has(channel)
+            ? guarded(prisma, SUBJECT_MANAGER_ROLES, "Only the Administrator, Director of Operations, Chief Pilot or Training Manager can change subjects.", fn)
+            : fn)
+    };
+    ipc.handle("subjects-get-all", async () =>
         prisma.subject.findMany({ orderBy: { subjectName: "asc" } })
     );
 
-    ipcMain.handle("subjects-get-by-id", async (event, subjectId) =>
+    ipc.handle("subjects-get-by-id", async (event, subjectId) =>
         prisma.subject.findUnique({ where: { id: subjectId } })
     );
 
-    ipcMain.handle("subjects-create", async (event, subject) => {
+    ipc.handle("subjects-create", async (event, subject) => {
         const problem = problemWith(subject) ?? await duplicateOf(subject);
         if (problem) return { success: false, message: problem };
         const createdSubject = await prisma.subject.create({
@@ -49,7 +58,7 @@ function registerSubjectHandlers() {
         return { success: true, message: "Subject created", subject: createdSubject };
     });
 
-    ipcMain.handle("subjects-update", async (event, subject) => {
+    ipc.handle("subjects-update", async (event, subject) => {
         const problem = problemWith(subject) ?? await duplicateOf(subject, subject.id);
         if (problem) return { success: false, message: problem };
         const updatedSubject = await prisma.subject.update({
@@ -64,7 +73,7 @@ function registerSubjectHandlers() {
     });
 
     // Questions in a deleted subject are kept; their subject is cleared.
-    ipcMain.handle("subjects-delete", async (event, subjectId) => {
+    ipc.handle("subjects-delete", async (event, subjectId) => {
         await prisma.subject.delete({ where: { id: subjectId } });
         return { success: true };
     });

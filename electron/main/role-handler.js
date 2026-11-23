@@ -1,11 +1,20 @@
 const { ipcMain } = require("electron");
 const { PrismaClient } = require("@prisma/client");
 
+const { guarded } = require("./require-role");
+
 const prisma = new PrismaClient();
+const ADMIN_ONLY = "Only an Administrator can change roles.";
+// The Administrator role keeps the app manageable; it cannot be renamed or deleted.
+const PROTECTED_ROLES = ["Administrator"];
 
 function registerRoleHandlers() {
+    const WRITE = new Set(["roles-create", "roles-update", "roles-delete"]);
+    const ipc = {
+        handle: (channel, fn) => ipcMain.handle(channel, WRITE.has(channel) ? guarded(prisma, ["Administrator"], ADMIN_ONLY, fn) : fn)
+    };
 
-    ipcMain.handle(
+    ipc.handle(
         "roles-get-all",
 
         async () => {
@@ -19,7 +28,7 @@ function registerRoleHandlers() {
         }
     );
 
-    ipcMain.handle(
+    ipc.handle(
         "roles-get-by-id",
 
         async (
@@ -39,7 +48,7 @@ function registerRoleHandlers() {
             });
         }
     );
-    ipcMain.handle(
+    ipc.handle(
         "roles-create",
 
         async (
@@ -91,13 +100,19 @@ function registerRoleHandlers() {
 
     );
 
-    ipcMain.handle(
+    ipc.handle(
         "roles-update",
 
         async (
             event,
             role
         ) => {
+
+        const current = await prisma.role.findUnique({ where: { id: role?.id } });
+        if (!current) return { success: false, message: "Role not found" };
+        if (PROTECTED_ROLES.includes(current.roleName) && role.roleName !== current.roleName) {
+            return { success: false, message: "The Administrator role cannot be renamed." };
+        }
 
         const updatedRole =
             await prisma.role.update({
@@ -121,13 +136,18 @@ function registerRoleHandlers() {
         };
         }
     );
-        ipcMain.handle(
+        ipc.handle(
             "roles-delete",
 
             async (
                 event,
                 roleId
             ) => {
+
+                const current = await prisma.role.findUnique({ where: { id: roleId }, include: { userRoles: true } });
+                if (!current) return { success: false, message: "Role not found" };
+                if (PROTECTED_ROLES.includes(current.roleName)) return { success: false, message: "The Administrator role cannot be deleted." };
+                if (current.userRoles.length > 0) return { success: false, message: `Remove this role from its ${current.userRoles.length} ${current.userRoles.length === 1 ? "person" : "people"} first.` };
 
                 await prisma.role.delete({
 
