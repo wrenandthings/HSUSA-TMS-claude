@@ -274,7 +274,9 @@ const SUBJECTS = [
     { code: "GROUND_OPS", subjectName: "Ground Operations" },
     // Quail, 2026-11-21/22: Dispatch and SMS-A banks.
     { code: "DISPATCH", subjectName: "Dispatch / Operational Control" },
-    { code: "SMS", subjectName: "Safety Management System" }
+    { code: "SMS", subjectName: "Safety Management System" },
+    // Owner, 2026-11-22: MEL gets its own subject (Quail had used MAINT).
+    { code: "MEL", subjectName: "Minimum Equipment List (MEL)" }
 ];
 
 async function seedSubjects() {
