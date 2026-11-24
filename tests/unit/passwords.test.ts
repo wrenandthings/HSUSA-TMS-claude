@@ -1,23 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { checkPassword, hashPassword, isHash, passwordProblem } from "../../electron/main/passwords";
+import { checkPassword, describePasswordRules, hashPassword, isHash, passwordProblem } from "../../electron/main/passwords";
 
-describe("password rules (12 characters with complexity, owner question 17)", () => {
-    it("accepts a long password with all four kinds of character", () => {
-        expect(passwordProblem("Hangar-Door-42x")).toBeNull();
+describe("password rules (owner 2026-11-24: 6 characters by default, each kind switchable)", () => {
+    it("accepts a password with all four kinds of character", () => {
+        expect(passwordProblem("Hang4r!")).toBeNull();
     });
 
-    it("rejects one that is too short", () => {
-        expect(passwordProblem("Ab1!short")).toBe("Password must be at least 12 characters.");
+    it("rejects one shorter than 6 by default", () => {
+        expect(passwordProblem("Ab1!x")).toBe("Password must be at least 6 characters.");
     });
 
     it("names what is missing", () => {
-        expect(passwordProblem("alllowercaseletters")).toBe("Password must include an upper-case letter, a number, a symbol.");
-        expect(passwordProblem("NoSymbolsHere123")).toBe("Password must include a symbol.");
+        expect(passwordProblem("alllowercase")).toBe("Password must include an upper-case letter, a number, a symbol.");
+        expect(passwordProblem("NoSymbols123")).toBe("Password must include a symbol.");
     });
 
-    it("follows the configured length, and complexity can be turned off", () => {
+    it("follows the configured length", () => {
         expect(passwordProblem("Ab1!Ab1!Ab1!", { minimumLength: 16 })).toBe("Password must be at least 16 characters.");
-        expect(passwordProblem("plainlongpassword", { complexityRequired: false })).toBeNull();
+    });
+
+    it("checks only the kinds that are switched on", () => {
+        const numbersOnly = { requireUppercase: false, requireLowercase: false, requireNumber: true, requireSymbol: false };
+        expect(passwordProblem("123456", numbersOnly)).toBeNull();
+        expect(passwordProblem("abcdef", numbersOnly)).toBe("Password must include a number.");
+        expect(passwordProblem("hangar", { requireUppercase: false, requireNumber: false, requireSymbol: false })).toBeNull();
+    });
+
+    it("describes the rules for the forms", () => {
+        expect(describePasswordRules({})).toBe("At least 6 characters, with an upper-case letter, a lower-case letter, a number and a symbol.");
+        expect(describePasswordRules({ minimumLength: 8, requireUppercase: false, requireLowercase: false, requireSymbol: false })).toBe("At least 8 characters, with a number.");
     });
 });
 

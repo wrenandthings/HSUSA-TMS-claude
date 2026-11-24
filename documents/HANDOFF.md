@@ -80,7 +80,9 @@ Settled; do not ask again. Q numbers refer to the doc "HSUSA-TMS: Questions for 
 | 2026-11-19 | Mechanics get the Maintenance role; Training Manager sets requirements for all users (Q33). |
 | 2026-11-19 | TM, DO, CP, Maintenance Manager and Quality Control may assign, renew, suspend qualifications (Q20). |
 | 2026-11-19 | All qualifications visible to all users (Q31). Placeholder mechanic qualification Return to Service, OM-A 11.8 (Q32). |
-| 2026-11-19 | bcrypt; 12-character minimum with complexity; forced change at first sign-in (Q16, Q17). |
+| 2026-11-24 | Password minimum 6 characters by default; an admin switches upper case, lower case, number and symbol on or off; at least one stays on. |
+| 2026-11-24 | Start the web-hosted version now, on its own branch (`finch/web`). The owner is registering a domain not tied to HeliService. |
+| 2026-11-19 | bcrypt; forced change at first sign-in (Q16, Q17). The 12-character rule was replaced on 2026-11-24. |
 | 2026-11-19 | Idle sign-out, default 30 minutes, admin-adjustable (Q18). |
 | 2026-11-19 | Store entered dates (Q22). Keep delete block on qualifications with history; admins can hide (Q24). |
 | 2026-11-19 | Badges at 30 and 7 days; alerts at 90/60/30/7 (Q23). |
@@ -234,7 +236,7 @@ Flashcards: by subject (Missed, Unsure, never seen, Know it oldest first), weak 
 
 Progress (Finch's choices): coverage = answered in quizzes / active questions; knowledge = share of answered whose latest answer is right, hidden per subject until 50% coverage; qualifications = current / assigned; readiness = knowledge x 70% + qualifications x 30%; weak areas = sections with 3+ answered, lowest first, up to 10.
 
-Settings: SessionTimeoutMinutes 30 (5-480); MinimumPasswordLength 12 (8-64); PasswordComplexityRequired TRUE; Alert90/60/30/7Days TRUE; ReadinessKnowledgeWeight 70 / ReadinessQualificationWeight 30; CoverageThreshold 50; QuizPassMarkPercent 80; QuizQuestionCount 20; CertificationQuestionCount 50; FlashcardCount 20; BackupRetentionDays 90; AuditRetentionDays 365 (not enforced yet).
+Settings: SessionTimeoutMinutes 30 (5-480); MinimumPasswordLength 6 (6-64); PasswordRequireUppercase, PasswordRequireLowercase, PasswordRequireNumber, PasswordRequireSymbol TRUE (at least one on); Alert90/60/30/7Days TRUE; ReadinessKnowledgeWeight 70 / ReadinessQualificationWeight 30; CoverageThreshold 50; QuizPassMarkPercent 80; QuizQuestionCount 20; CertificationQuestionCount 50; FlashcardCount 20; BackupRetentionDays 90; AuditRetentionDays 365 (not enforced yet).
 
 Records: audit log of approvals, waivers, overrides, requirement, role, password, user, import and settings changes; daily `VACUUM INTO` backup kept 90 days (no restore screen); JSON log files rotated at 5 MB, keep 5.
 
@@ -277,7 +279,7 @@ Waivers (DO or Admin, one training) and overrides (Admin, whole qualification): 
 
 Alerts: window = largest alert setting switched on; red within 7 days, amber within 30; one row per training even if two qualifications need it; managers see everyone.
 
-Passwords: bcrypt only; 12+ with upper, lower, number, symbol; temporary passwords forced to change to something different; old plain-text accounts converted at next sign-in.
+Passwords: bcrypt only; 6+ characters by default with whichever of upper, lower, number, symbol the admin has switched on (all four by default, never none); temporary passwords forced to change to something different; old plain-text accounts converted at next sign-in.
 
 ## 10. Question banks and the Quail pipeline
 

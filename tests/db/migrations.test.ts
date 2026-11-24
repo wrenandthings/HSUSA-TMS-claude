@@ -59,7 +59,8 @@ describe("seed data from the Seed Data Specification", () => {
         const keys = (await db.prisma.configuration.findMany()).map(c => c.key).sort();
         expect(keys).toEqual([
             "Alert30Days", "Alert60Days", "Alert7Days", "Alert90Days", "AuditRetentionDays", "BackupRetentionDays",
-            "CertificationQuestionCount", "CoverageThreshold", "MinimumPasswordLength", "PasswordComplexityRequired",
+            "CertificationQuestionCount", "CoverageThreshold", "MinimumPasswordLength", "PasswordRequireLowercase", "PasswordRequireNumber",
+            "PasswordRequireSymbol", "PasswordRequireUppercase",
             "QuizPassMarkPercent", "QuizQuestionCount",
             "ReadinessKnowledgeWeight", "ReadinessQualificationWeight", "SessionTimeoutMinutes"
         ]);

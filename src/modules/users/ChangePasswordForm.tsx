@@ -1,6 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export const PASSWORD_RULES_TEXT = "At least 12 characters, with an upper-case letter, a lower-case letter, a number and a symbol.";
+// The password rules in words, as an administrator set them in Settings.
+export function usePasswordRulesText(): string {
+    const [text, setText] = useState("");
+    useEffect(() => {
+        let live = true;
+        Promise.resolve(window.hsusa.passwordRules?.())
+            .then((result) => { if (live && result?.success) setText(result.text); })
+            .catch(() => undefined);
+        return () => { live = false; };
+    }, []);
+    return text;
+}
 
 interface Props {
     title?: string;
@@ -19,6 +30,7 @@ export default function ChangePasswordForm(props: Props) {
     const [confirmation, setConfirmation] = useState("");
     const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
+    const rulesText = usePasswordRulesText();
 
     async function submit() {
         if (props.requireCurrentPassword && !current) {
@@ -52,7 +64,7 @@ export default function ChangePasswordForm(props: Props) {
                 <><label>Current Password<br /><input type="password" autoFocus value={current} onChange={(e) => setCurrent(e.target.value)} /></label><br /><br /></>
             )}
             <label>New Password<br /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></label><br />
-            <small>{PASSWORD_RULES_TEXT}</small><br /><br />
+            <small>{rulesText}</small><br /><br />
             <label>Confirm Password<br /><input type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} /></label><br /><br />
             {error && <p style={{ color: "darkred" }}>{error}</p>}
             <button className="primary" onClick={() => void submit()} disabled={saving}>Save Password</button>

@@ -51,7 +51,7 @@ describe("changing your own password", () => {
     it("needs the current password, follows the rules, and clears the forced change", async () => {
         const admin = await user("admin");
         expect((await auth.changeOwnPassword(admin.id, "wrong", "Hangar-Door-42x")).message).toBe("Current password is incorrect.");
-        expect((await auth.changeOwnPassword(admin.id, "CHANGE_ME", "short")).message).toBe("Password must be at least 12 characters.");
+        expect((await auth.changeOwnPassword(admin.id, "CHANGE_ME", "short")).message).toBe("Password must be at least 6 characters.");
         expect((await auth.changeOwnPassword(admin.id, "CHANGE_ME", "CHANGE_ME")).message).toBe("New password must be different from the current one.");
         expect(await auth.changeOwnPassword(admin.id, "CHANGE_ME", "Hangar-Door-42x")).toEqual({ success: true, message: "Password changed." });
         expect((await user("admin")).mustChangePassword).toBe(false);

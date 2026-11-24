@@ -4,6 +4,15 @@ The Word documents in this folder are the original baseline. When the owner
 decides something that differs from them, it is recorded here, newest first.
 Each entry says which document it changes.
 
+## 2026-11-24: Start the web-hosted version; password rules set by the admin
+
+- Owner: "lets fork the project and work on a webhosted version." Work happens on the branch `finch/web` (from `finch/work`), so the desktop testing release stays untouched. It can move to its own repository later with its history. Plan: `documents/HANDOFF.md` section 15.
+- The owner is registering a domain that is not tied to HeliService, so it can be reused if the company does not adopt the app.
+- Owner: "I also want the default password minimum to be 6 characters. and an admin can toggle requirements for caps, lowercase, numbers, and symbols. obviously at least one has to be enable."
+  - Settings: MinimumPasswordLength default 6 (range 6 to 64); PasswordRequireUppercase, PasswordRequireLowercase, PasswordRequireNumber, PasswordRequireSymbol, each on by default. Saving with all four off is refused.
+  - Replaces PasswordComplexityRequired and the 12-character default (owner question 17). Seed version 3 moves existing copies over: a length still at the old default 12 becomes 6; the old switch sets the four new ones (if it was off, only lower case stays on).
+  - The password forms show the rules as currently set.
+
 ## 2026-11-22: Testing account "User" with a blank password
 
 - Owner: "for testing it needs a default normal user. make it User, and make the password blank."

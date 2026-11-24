@@ -8,8 +8,11 @@ const whole = (min, max, unit) => ({ kind: "integer", min, max, unit });
 // Order and groups are what the Settings screen shows.
 const SETTINGS = [
     { key: "SessionTimeoutMinutes", group: "Security", label: "Sign out after this many minutes without activity", ...whole(5, 480, "minutes"), fallback: "30" },
-    { key: "MinimumPasswordLength", group: "Security", label: "Minimum password length", ...whole(8, 64, "characters"), fallback: "12" },
-    { key: "PasswordComplexityRequired", group: "Security", label: "Require upper case, lower case, a number and a symbol", ...yesNo, fallback: "TRUE" },
+    { key: "MinimumPasswordLength", group: "Security", label: "Minimum password length", ...whole(6, 64, "characters"), fallback: "6" },
+    { key: "PasswordRequireUppercase", group: "Security", label: "Passwords need an upper-case letter", ...yesNo, fallback: "TRUE" },
+    { key: "PasswordRequireLowercase", group: "Security", label: "Passwords need a lower-case letter", ...yesNo, fallback: "TRUE" },
+    { key: "PasswordRequireNumber", group: "Security", label: "Passwords need a number", ...yesNo, fallback: "TRUE" },
+    { key: "PasswordRequireSymbol", group: "Security", label: "Passwords need a symbol", ...yesNo, fallback: "TRUE" },
     { key: "Alert90Days", group: "Qualification alerts", label: "Alert 90 days before a qualification expires", ...yesNo, fallback: "TRUE" },
     { key: "Alert60Days", group: "Qualification alerts", label: "Alert 60 days before", ...yesNo, fallback: "TRUE" },
     { key: "Alert30Days", group: "Qualification alerts", label: "Alert 30 days before", ...yesNo, fallback: "TRUE" },
@@ -24,6 +27,8 @@ const SETTINGS = [
     { key: "BackupRetentionDays", group: "Records", label: "Keep backups for", ...whole(1, 3650, "days"), fallback: "90" },
     { key: "AuditRetentionDays", group: "Records", label: "Keep audit records for", ...whole(30, 3650, "days"), fallback: "365" }
 ];
+
+const PASSWORD_KEYS = ["PasswordRequireUppercase", "PasswordRequireLowercase", "PasswordRequireNumber", "PasswordRequireSymbol"];
 
 const BY_KEY = Object.fromEntries(SETTINGS.map((setting) => [setting.key, setting]));
 
@@ -79,6 +84,9 @@ function createConfigurationService(prisma) {
         const after = { ...current, ...updates };
         if (Number(after.ReadinessKnowledgeWeight) + Number(after.ReadinessQualificationWeight) !== 100) {
             problems.push("The two readiness weights must add up to 100%.");
+        }
+        if (PASSWORD_KEYS.every((key) => after[key] === "FALSE")) {
+            problems.push("Passwords must need at least one kind of character: keep at least one of upper case, lower case, number or symbol switched on.");
         }
         if (problems.length > 0) return { success: false, message: problems.join(" ") };
         if (Object.keys(updates).length === 0) return { success: true, message: "Nothing changed.", settings: await getAll() };

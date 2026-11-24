@@ -73,13 +73,37 @@ async function main() {
         { key: "Alert7Days", value: "TRUE", description: "Qualification alert 7 days before expiration" },
         { key: "BackupRetentionDays", value: "90", description: "Days to keep backups" },
         { key: "AuditRetentionDays", value: "365", description: "Days to keep audit records" },
-        { key: "MinimumPasswordLength", value: "12", description: "Minimum password length" },
-        { key: "PasswordComplexityRequired", value: "TRUE", description: "Require complex passwords" },
+        // Owner, 2026-11-24: default 6 characters; each kind of character switched on or off.
+        { key: "MinimumPasswordLength", value: "6", description: "Minimum password length" },
+        { key: "PasswordRequireUppercase", value: "TRUE", description: "Passwords need an upper-case letter" },
+        { key: "PasswordRequireLowercase", value: "TRUE", description: "Passwords need a lower-case letter" },
+        { key: "PasswordRequireNumber", value: "TRUE", description: "Passwords need a number" },
+        { key: "PasswordRequireSymbol", value: "TRUE", description: "Passwords need a symbol" },
         // Quiz engine (Phase 4). Defaults chosen by Finch 2026-11-21; admin-adjustable.
         { key: "QuizPassMarkPercent", value: "80", description: "Pass mark for quizzes" },
         { key: "QuizQuestionCount", value: "20", description: "Questions in a practice quiz" },
         { key: "CertificationQuestionCount", value: "50", description: "Questions in a certification quiz" }
     ];
+
+    // Before the configs below are added: carry an older database's single
+    // complexity switch over to the four new ones, and move the old default
+    // length (12) to the new default (6). A length an admin chose is kept.
+    const oldComplexity = await prisma.configuration.findUnique({ where: { key: "PasswordComplexityRequired" } });
+    if (oldComplexity) {
+        const on = String(oldComplexity.value).toUpperCase() !== "FALSE";
+        for (const [key, description] of [
+            ["PasswordRequireUppercase", "Passwords need an upper-case letter"],
+            ["PasswordRequireLowercase", "Passwords need a lower-case letter"],
+            ["PasswordRequireNumber", "Passwords need a number"],
+            ["PasswordRequireSymbol", "Passwords need a symbol"]
+        ]) {
+            // Off before means no rule at all; keep lower case on so at least one stays on.
+            const value = on || key === "PasswordRequireLowercase" ? "TRUE" : "FALSE";
+            await prisma.configuration.upsert({ where: { key }, update: {}, create: { key, value, description } });
+        }
+        await prisma.configuration.delete({ where: { key: "PasswordComplexityRequired" } });
+        await prisma.configuration.updateMany({ where: { key: "MinimumPasswordLength", value: "12" }, data: { value: "6" } });
+    }
 
     for (const config of configs) {
 
@@ -379,7 +403,7 @@ async function seedTestUser() {
 
 // Raise this when the seed adds something installed copies should get
 // without a new migration (electron/main/first-run.js compares it).
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 // Safe to run again: everything is created only if missing.
 async function seed(client: any) {

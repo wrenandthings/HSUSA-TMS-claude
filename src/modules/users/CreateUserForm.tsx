@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PASSWORD_RULES_TEXT } from "./ChangePasswordForm";
+import { usePasswordRulesText } from "./ChangePasswordForm";
 
 interface Props {
     onCreate: (
@@ -14,6 +14,7 @@ interface Props {
 }
 
 export default function CreateUserForm(props: Props) {
+    const rulesText = usePasswordRulesText();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [firstName, setFirstName] = useState("");
@@ -32,7 +33,7 @@ export default function CreateUserForm(props: Props) {
             <h2>Create User</h2>
             <label>Username<br /><input value={username} onChange={(e) => setUsername(e.target.value)} /></label><br /><br />
             <label>Temporary Password<br /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></label><br />
-            <small>{PASSWORD_RULES_TEXT} The user must change it at first sign-in.</small><br /><br />
+            <small>{rulesText} The user must change it at first sign-in.</small><br /><br />
             <label>First Name<br /><input value={firstName} onChange={(e) => setFirstName(e.target.value)} /></label><br /><br />
             <label>Last Name<br /><input value={lastName} onChange={(e) => setLastName(e.target.value)} /></label><br /><br />
             <label>Email<br /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label><br /><br />

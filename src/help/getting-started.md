@@ -44,7 +44,7 @@ A new install comes with two accounts. Usernames are case-sensitive: type them e
 4. Click **Sign in**.
 5. Signing in as `admin` the first time, the app shows **Choose a New Password**:
     1. Type `CHANGE_ME` in Current Password.
-    2. Type your new password in New Password and again in Confirm Password. It needs at least 12 characters, with an upper-case letter, a lower-case letter, a number and a symbol (for example `Hangar-Door-42x`).
+    2. Type your new password in New Password and again in Confirm Password. The rules are shown under the box. By default it needs at least 6 characters, with an upper-case letter, a lower-case letter, a number and a symbol (for example `Hang4r!`); an administrator can change them.
     3. Click **Save Password**.
 
 The app signs you out after 30 minutes without activity. Sign in again to carry on; a quiz you were in the middle of is saved.

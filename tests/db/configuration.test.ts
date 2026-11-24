@@ -63,6 +63,23 @@ describe("settings", () => {
         expect((await call("auth-login", { username: "admin", password: "Hangar-Door-42x" })).sessionTimeoutMinutes).toBe(15);
     });
 
+    it("password rules: 6 characters by default, each kind switchable, at least one kept on (owner 2026-11-24)", async () => {
+        expect(await call("auth-password-rules")).toEqual({ success: true, text: "At least 6 characters, with an upper-case letter, a lower-case letter, a number and a symbol." });
+
+        const allOff = await call("configuration-save", { changes: { PasswordRequireUppercase: false, PasswordRequireLowercase: false, PasswordRequireNumber: false, PasswordRequireSymbol: false } });
+        expect(allOff.success).toBe(false);
+        expect(allOff.message).toContain("at least one");
+        expect((await call("configuration-save", { changes: { MinimumPasswordLength: "5" } })).message).toContain("between 6 and 64");
+
+        const some = await call("configuration-save", { changes: { MinimumPasswordLength: "8", PasswordRequireUppercase: false, PasswordRequireSymbol: false } });
+        expect(some.success).toBe(true);
+        expect((await call("auth-password-rules")).text).toBe("At least 8 characters, with a lower-case letter and a number.");
+        const admin = await db.prisma.user.findUniqueOrThrow({ where: { username: "admin" } });
+        expect((await call("auth-change-own-password", { currentPassword: "Hangar-Door-42x", newPassword: "hangar99" })).success).toBe(true);
+        await db.prisma.user.update({ where: { id: admin.id }, data: { passwordHash: (await require(path.join(path.resolve(__dirname, "../../electron/main"), "passwords.js")).hashPassword("Hangar-Door-42x")) } });
+        expect((await call("configuration-save", { changes: { MinimumPasswordLength: "6", PasswordRequireUppercase: true, PasswordRequireSymbol: true } })).success).toBe(true);
+    });
+
     it("write sign-ins, failures and settings to the log files, never a password", async () => {
         await call("auth-login", { username: "admin", password: "Wrong-Password-1" });
         const security = readFileSync(path.join(process.env.LOG_DIR!, "security.log"), "utf8");
@@ -78,5 +95,18 @@ describe("settings", () => {
         const entry = await db.prisma.auditLog.findFirst({ where: { action: "USER_SIGNED_OUT_IDLE" } });
         expect(entry).not.toBeNull();
         expect(await call("configuration-get-all")).toEqual({ success: false, message: "Authentication required" });
+    });
+
+    it("seed carries an older database's single complexity switch over to the four new ones", async () => {
+        const keys = ["PasswordRequireUppercase", "PasswordRequireLowercase", "PasswordRequireNumber", "PasswordRequireSymbol"];
+        await db.prisma.configuration.deleteMany({ where: { key: { in: keys } } });
+        await db.prisma.configuration.create({ data: { key: "PasswordComplexityRequired", value: "FALSE" } });
+        await db.prisma.configuration.update({ where: { key: "MinimumPasswordLength" }, data: { value: "12" } });
+        db.run("tsx", ["prisma/seed.ts"]);
+        const rows = await db.prisma.configuration.findMany({ where: { key: { in: [...keys, "PasswordComplexityRequired", "MinimumPasswordLength"] } } });
+        const value = (key: string) => rows.find((r) => r.key === key)?.value;
+        expect(value("PasswordComplexityRequired")).toBeUndefined();
+        expect(value("MinimumPasswordLength")).toBe("6");
+        expect(keys.map(value)).toEqual(["FALSE", "TRUE", "FALSE", "FALSE"]);
     });
 });

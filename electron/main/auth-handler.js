@@ -4,6 +4,7 @@ const { setCurrentUser, clearCurrentUser, getCurrentUserId } = require("./auth-c
 const { createAuthService } = require("./auth-service");
 const { createConfigurationService } = require("./configuration-service");
 const { getLogger } = require("./logging-service");
+const { describePasswordRules, loadPasswordRules } = require("./passwords");
 
 const prisma = new PrismaClient();
 const auth = createAuthService(prisma);
@@ -28,6 +29,10 @@ function registerAuthenticationHandlers() {
         getLogger().security(result.success ? "PASSWORD_CHANGED" : "PASSWORD_CHANGE_REFUSED", { userId, ...(result.success ? {} : { reason: result.message }) });
         return result;
     });
+
+    // The password rules in words, for the password forms. Not secret, so no
+    // sign-in is needed.
+    ipcMain.handle("auth-password-rules", async () => ({ success: true, text: describePasswordRules(await loadPasswordRules(prisma)) }));
 
     // { reason: "idle" } when the window signed out after the idle time limit.
     ipcMain.handle("auth-logout", async (event, input) => {

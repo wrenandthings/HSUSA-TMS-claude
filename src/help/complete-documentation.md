@@ -311,8 +311,11 @@ Everyone can read the settings; only an Administrator can change them. A value o
 | Group | Setting | Default | Range | What it changes |
 | --- | --- | --- | --- | --- |
 | Security | Sign out after this many minutes without activity | 30 | 5 to 480 minutes | Automatic sign-out |
-| Security | Minimum password length | 12 | 8 to 64 characters | New and changed passwords |
-| Security | Require upper case, lower case, a number and a symbol | Yes | Yes or No | New and changed passwords |
+| Security | Minimum password length | 6 | 6 to 64 characters | New and changed passwords |
+| Security | Passwords need an upper-case letter | Yes | Yes or No | New and changed passwords; at least one of these four stays on |
+| Security | Passwords need a lower-case letter | Yes | Yes or No | As above |
+| Security | Passwords need a number | Yes | Yes or No | As above |
+| Security | Passwords need a symbol | Yes | Yes or No | As above |
 | Qualification alerts | Alert 90 days before | Yes | Yes or No | The Home page alert window (the largest switched on) |
 | Qualification alerts | Alert 60 days before | Yes | Yes or No | As above |
 | Qualification alerts | Alert 30 days before | Yes | Yes or No | As above |

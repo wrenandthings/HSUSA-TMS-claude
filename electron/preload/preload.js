@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("hsusa", {
     version: "1.0.0",
     login: (username, password) => ipcRenderer.invoke("auth-login", { username, password }),
     changeOwnPassword: (currentPassword, newPassword) => ipcRenderer.invoke("auth-change-own-password", { currentPassword, newPassword }),
+    passwordRules: () => ipcRenderer.invoke("auth-password-rules"),
     logout: (input) => ipcRenderer.invoke("auth-logout", input),
     getSettings: () => ipcRenderer.invoke("configuration-get-all"),
     saveSettings: (changes) => ipcRenderer.invoke("configuration-save", { changes }),

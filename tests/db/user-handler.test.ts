@@ -39,7 +39,7 @@ describe("user and sign-in handlers", () => {
 
     it("check a new account's temporary password against the rules, then hash it", async () => {
         const base = { username: "mech1", firstName: "M", lastName: "One", email: "", status: "ACTIVE" };
-        expect(await call("users-create", { ...base, password: "short" })).toEqual({ success: false, message: "Password must be at least 12 characters." });
+        expect(await call("users-create", { ...base, password: "short" })).toEqual({ success: false, message: "Password must be at least 6 characters." });
         const created = await call("users-create", { ...base, password: "Temporary-Pass-9" });
         expect(created.success).toBe(true);
         expect(created.user.passwordHash).toBeUndefined();
