@@ -132,8 +132,9 @@ async function main() {
             username: "admin",
 
             // Test password for a new installation. It is hashed, and the
-            // admin must choose a new one at first sign-in.
-            passwordHash: await hashPassword("CHANGE_ME"),
+            // admin must choose a new one at first sign-in. On the public web
+            // site the owner supplies it instead (see initialAdminPassword).
+            passwordHash: await hashPassword(initialAdminPassword()),
 
             mustChangePassword: true,
 
@@ -176,7 +177,8 @@ async function main() {
     await seedSubjects();
     await seedDocuments();
     await seedRequirements();
-    await seedTestUser();
+    // Never on the public web site: anyone could sign in with a blank password.
+    if (!publicSite()) await seedTestUser();
     await seedPermissions(adminRole);
 
     console.log("Seed Complete");
@@ -385,6 +387,24 @@ async function seedRequirements() {
             });
         }
     }
+}
+
+// TMS_PUBLIC_SITE=1 on the hosted web version (render.yaml). A known starting
+// password there would let whoever signs in first take over the admin
+// account, so the owner sets TMS_ADMIN_INITIAL_PASSWORD in the host's
+// settings (never in the repository). It is used once, when admin is first
+// created, and must still be changed at first sign-in.
+function publicSite() {
+    return process.env.TMS_PUBLIC_SITE === "1";
+}
+
+function initialAdminPassword() {
+    if (!publicSite()) return "CHANGE_ME";
+    const supplied = process.env.TMS_ADMIN_INITIAL_PASSWORD ?? "";
+    if (supplied.length < 12) {
+        throw new Error("TMS_ADMIN_INITIAL_PASSWORD must be set to at least 12 characters in the host's settings before the first start of the public site.");
+    }
+    return supplied;
 }
 
 // TESTING ONLY (owner, 2026-11-22): a default ordinary user for testers,

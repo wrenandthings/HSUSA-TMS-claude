@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTestDatabase, TestDatabase } from "./testDatabase";
+import { createTestDatabase, onPostgres, TestDatabase } from "./testDatabase";
 
 let db: TestDatabase;
 
@@ -8,7 +8,9 @@ afterAll(async () => { await db.cleanup(); });
 
 describe("migrations on a new database", () => {
     it("match the Prisma schema exactly", () => {
-        const output = db.run("prisma", ["migrate", "diff", "--from-url", db.url, "--to-schema-datamodel", "prisma/schema.prisma", "--exit-code"]);
+        // PostgreSQL (web version): its own migrations against its generated schema.
+        const schema = onPostgres ? "prisma/postgres/schema.prisma" : "prisma/schema.prisma";
+        const output = db.run("prisma", ["migrate", "diff", "--from-url", db.url, "--to-schema-datamodel", schema, "--exit-code"]);
         expect(output).toContain("No difference detected");
     });
 

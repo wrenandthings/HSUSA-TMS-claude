@@ -1,0 +1,433 @@
+// GENERATED from prisma/schema.prisma by scripts/postgres-schema.js. Do not edit.
+// The web version's database (PostgreSQL). Edit prisma/schema.prisma instead.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      String               @id @default(uuid())
+  username                String               @unique
+  // bcrypt hash. Accounts from before hashing may still hold plain text
+  // until their next sign-in (electron/main/passwords.js).
+  passwordHash            String
+  // True for new accounts and after an admin sets a password: the user must
+  // choose their own password at the next sign-in.
+  mustChangePassword      Boolean              @default(false)
+  firstName               String
+  lastName                String
+  email                   String?
+  status                  UserStatus
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  userRoles               UserRole[]
+  qualifications          UserQualification[]
+  auditLogs               AuditLog[]
+  backups                 Backup[]
+  quizSessions            QuizSession[]
+  flashcardSessions       FlashcardSession[]
+  flashcardHistory        FlashcardHistory[]
+  waivers                 RequirementWaiver[] @relation("WaiverUser")
+  waiversApproved         RequirementWaiver[] @relation("WaiverApprover")
+  waiversRevoked          RequirementWaiver[] @relation("WaiverRevoker")
+  trainingRecords         UserTrainingRecord[] @relation("TrainingRecordUser")
+  reviewedTrainingRecords UserTrainingRecord[] @relation("TrainingRecordReviewer")
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  roleName    String           @unique
+  description String?
+  userRoles   UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id             String           @id @default(uuid())
+  permissionCode String           @unique
+  name           String
+  category       String
+  roles          RolePermission[]
+}
+
+model UserRole {
+  id     String @id @default(uuid())
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId], name: "userId_roleId")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model Configuration {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  value       String
+  description String?
+}
+
+// action is still free text (for example QUALIFICATION_ASSIGNED). The Prisma
+// Schema spec's AuditAction enum can replace it once all callers are updated.
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  entity    String
+  entityId  String?
+  action    String
+  oldValue  String?
+  newValue  String?
+  timestamp DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([timestamp])
+}
+
+model Backup {
+  id           String   @id @default(uuid())
+  backupName   String
+  fileLocation String
+  createdAt    DateTime @default(now())
+  createdBy    String?
+  sizeBytes    BigInt
+  user         User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+}
+
+// A subject such as OM-A or Maintenance (owner question 15: code plus name).
+// subjectName is the display name.
+model Subject {
+  id          String     @id @default(uuid())
+  code        String     @unique
+  subjectName String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  questions   Question[]
+}
+
+// One question-bank question. Imported banks use the format agreed with Quail
+// (commons/direct/finch-quail.md in wren-sandbox): externalId is the bank's
+// questionId, so re-importing updates instead of duplicating. answer holds
+// the older free-text answer of questions entered by hand.
+model Question {
+  id             String    @id @default(uuid())
+  externalId     String?   @unique
+  questionText   String
+  answerA        String?
+  answerB        String?
+  answerC        String?
+  answerD        String?
+  correctAnswer  String?
+  reference      String?
+  category       String?
+  section        String?
+  difficulty     String?
+  sourceRevision String?
+  active         Boolean   @default(true)
+  answer         String?
+  subjectId      String?
+  subject        Subject?  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  // The manual the question comes from (owner, 2026-11-20: one pool of
+  // questions, filtered by source document for quizzes, tests and references).
+  documentId     String?
+  document       Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  quizQuestions QuizQuestion[]
+  quizAnswers   QuizAnswer[]
+  flashcards    FlashcardHistory[]
+
+  @@index([subjectId])
+  @@index([documentId])
+}
+
+// A catalog entry such as PIC or HUET. Dates belong to each person's
+// assignment (UserQualification), not to the catalog entry.
+// renewalMonths is how long an award lasts; null means it does not expire.
+model Qualification {
+  id            String                     @id @default(uuid())
+  code          String                     @unique
+  name          String                     @unique
+  description   String?
+  renewalMonths Int?
+  active        Boolean                    @default(true)
+  // Hidden by an administrator because it was created in error (owner
+  // decision 2026-11-19, question 24). History is kept; lists leave it out.
+  hidden        Boolean                    @default(false)
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  assignments   UserQualification[]
+  requirements  QualificationRequirement[]
+}
+
+model UserQualification {
+  id              String           @id @default(uuid())
+  userId          String
+  qualificationId String
+  assignedAt      DateTime         @default(now())
+  completedAt     DateTime?
+  revokedAt       DateTime?
+  endReason       String?
+  status          AssignmentStatus @default(ACTIVE)
+  awardedDate     DateTime?
+  expirationDate  DateTime?
+  suspended       Boolean          @default(false)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  qualification   Qualification    @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([qualificationId])
+  @@index([status])
+  @@index([expirationDate])
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+enum QualificationStatus {
+  CURRENT
+  EXPIRING
+  EXPIRING_CRITICAL
+  EXPIRED
+  SUSPENDED
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  COMPLETED
+  REVOKED
+}
+
+// A reference document such as the Operations Manual (Prisma Schema spec
+// v1.0). filePath is optional until the reference library (Phase 7) stores
+// the PDFs; versions and page references come with that phase.
+model Document {
+  id            String     @id @default(uuid())
+  code          String     @unique
+  title         String
+  description   String?
+  version       String?
+  filePath      String?
+  effectiveDate DateTime?
+  active        Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  questions     Question[]
+}
+
+enum QuizType {
+  RANDOM
+  WEAK_AREA
+  UNSEEN
+  CERTIFICATION
+}
+
+// Quiz engine (Phase 4), from the Prisma Schema spec v1.0, plus:
+// - name, subjectId and documentId: what the quiz was drawn from;
+// - passMarkPercent and passed: the pass mark in force when it was taken;
+// - QuizQuestion.answerOrder: the shuffled order the options were shown in
+//   (owner: shuffle at display), e.g. "CADB", so review shows the same order;
+// - QuizQuestion.flagged: the Flag button on the quiz screen (UI spec QUIZ-002).
+// QuizAnswer.selectedAnswer is the question's own letter (A-D), not the
+// position on screen. One answer per question per quiz (changing it updates it).
+model QuizSession {
+  id              String         @id @default(uuid())
+  userId          String
+  quizType        QuizType
+  name            String
+  subjectId       String?
+  documentId      String?
+  startedAt       DateTime       @default(now())
+  completedAt     DateTime?
+  scorePercent    Float?
+  passMarkPercent Int
+  passed          Boolean?
+  questionCount   Int
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions       QuizQuestion[]
+  answers         QuizAnswer[]
+
+  @@index([userId, completedAt])
+}
+
+model QuizQuestion {
+  id            String      @id @default(uuid())
+  quizSessionId String
+  questionId    String
+  displayOrder  Int
+  answerOrder   String
+  flagged       Boolean     @default(false)
+  session       QuizSession @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+  question      Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([quizSessionId, questionId])
+  @@unique([quizSessionId, displayOrder])
+}
+
+model QuizAnswer {
+  id             String      @id @default(uuid())
+  quizSessionId  String
+  questionId     String
+  selectedAnswer String
+  correct        Boolean
+  answeredAt     DateTime    @default(now())
+  session        QuizSession @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+  question       Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([quizSessionId, questionId])
+  @@index([questionId])
+}
+
+// Qualification requirements (owner decisions 2026-11-21, documents/DECISIONS.md):
+// a qualification is current only while every requirement is current.
+// From the Prisma Schema spec v1.0. requirementType is TRAINING (requirementRef
+// is a TrainingProgram code) or QUALIFICATION (requirementRef is a
+// Qualification code, e.g. IFR needs a current PIC).
+model QualificationRequirement {
+  id              String        @id @default(uuid())
+  qualificationId String
+  requirementType String
+  requirementRef  String
+  qualification   Qualification @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+
+  @@unique([qualificationId, requirementType, requirementRef])
+}
+
+// Something a person completes: a check ride, a course, recurrent training.
+// From the spec, plus renewalMonths (null = done once, never expires),
+// description and active. Modules are left for later.
+model TrainingProgram {
+  id            String               @id @default(uuid())
+  code          String               @unique
+  name          String
+  category      String
+  description   String?
+  renewalMonths Int?
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  records       UserTrainingRecord[]
+}
+
+enum TrainingResult {
+  PASS
+  FAIL
+  INCOMPLETE
+  WAIVED
+}
+
+enum RecordApproval {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A completed training event, recorded by the person and counted once
+// approved (owner, 2026-11-21). From the spec's UserTrainingRecord, with
+// moduleId left out for now and the approval fields added.
+model UserTrainingRecord {
+  id             String          @id @default(uuid())
+  userId         String
+  programId      String
+  completionDate DateTime
+  result         TrainingResult  @default(PASS)
+  instructorName String?
+  notes          String?
+  approval       RecordApproval  @default(PENDING)
+  submittedAt    DateTime        @default(now())
+  reviewedById   String?
+  reviewedAt     DateTime?
+  reviewNote     String?
+  user           User            @relation("TrainingRecordUser", fields: [userId], references: [id], onDelete: Cascade)
+  program        TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  reviewer       User?           @relation("TrainingRecordReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, programId])
+  @@index([approval])
+}
+
+// Flashcards (Phase 5; UI spec FLASH-001/002; Prisma Schema spec v1.0, with a
+// mode, a name and the chosen cards added so a session can be continued).
+enum FlashcardState {
+  KNOW_IT
+  UNSURE
+  MISSED
+}
+
+model FlashcardSession {
+  id          String             @id @default(uuid())
+  userId      String
+  mode        String             // SUBJECT, WEAK_AREA or CUSTOM
+  name        String
+  subjectId   String?
+  documentId  String?
+  questionIds String             // JSON array of question ids, in card order
+  startedAt   DateTime           @default(now())
+  completedAt DateTime?
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history     FlashcardHistory[]
+
+  @@index([userId])
+}
+
+model FlashcardHistory {
+  id         String            @id @default(uuid())
+  userId     String
+  questionId String
+  sessionId  String?
+  status     FlashcardState
+  reviewedAt DateTime          @default(now())
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   Question          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  session    FlashcardSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, questionId])
+  @@index([sessionId])
+}
+
+// Waivers and overrides (Qualification Rules Matrix "Administrative Override
+// Rules"; Approval Matrix "Qualification Waivers"). For one person:
+// targetType TRAINING waives one training (Director of Operations or
+// Administrator); targetType QUALIFICATION overrides a whole qualification to
+// current (Administrator). Each needs a reason and an expiry date; revoking
+// keeps the record.
+model RequirementWaiver {
+  id            String    @id @default(uuid())
+  userId        String
+  targetType    String    // TRAINING or QUALIFICATION
+  targetRef     String    // training program code or qualification code
+  reason        String
+  documentation String?
+  approvedById  String
+  issuedAt      DateTime
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  revokedAt     DateTime?
+  revokedById   String?
+  revokeReason  String?
+  user          User      @relation("WaiverUser", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy    User      @relation("WaiverApprover", fields: [approvedById], references: [id])
+  revokedBy     User?     @relation("WaiverRevoker", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}

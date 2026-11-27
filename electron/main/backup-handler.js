@@ -21,16 +21,23 @@ async function requireAdministrator() {
     return admin ? [userId, null] : [null, "Only an administrator can manage backups."];
 }
 
+// The web version's database is PostgreSQL at a database host, which makes
+// its own backups; these file backups are for the desktop's SQLite file only.
+const HOSTED_MESSAGE = "This is the web version: backups are made by the database host, not from this page.";
+const hosted = () => !String(process.env.DATABASE_URL ?? "").startsWith("file:");
+
 function registerBackupHandlers() {
     ipcMain.handle("backups-list", async () => {
         const [, problem] = await requireAdministrator();
         if (problem) return { success: false, message: problem };
+        if (hosted()) return { success: true, folder: HOSTED_MESSAGE, backups: [] };
         return { success: true, folder: backups().folder, backups: await backups().list() };
     });
 
     ipcMain.handle("backups-create", async () => {
         const [userId, problem] = await requireAdministrator();
         if (problem) return { success: false, message: problem };
+        if (hosted()) return { success: false, message: HOSTED_MESSAGE, backups: [] };
         const result = await backups().backUp(userId, "manual");
         return { ...result, backups: await backups().list() };
     });

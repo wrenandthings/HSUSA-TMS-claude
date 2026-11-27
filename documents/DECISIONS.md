@@ -4,6 +4,12 @@ The Word documents in this folder are the original baseline. When the owner
 decides something that differs from them, it is recorded here, newest first.
 Each entry says which document it changes.
 
+## 2026-11-27: Cheapest hosting for testing; domain readyhangar.site
+
+- Owner: "show me the cheapest option. the domain is readyhangar.site and I wanted to use hostnirvana because I already have a hosting plan with them." HostNirvana's plan is website hosting (PHP and MySQL); it cannot keep a Node.js program running, so it keeps the domain and DNS only.
+- Chosen: Render free web service + Supabase free PostgreSQL, at a subdomain of readyhangar.site. Free limits accepted for testing: the site sleeps after 15 idle minutes (about a minute to wake) and the database pauses after a week unused. Render's always-on instance is the first upgrade.
+- The public site never seeds known passwords: no `User` testing account, and admin's first password is set by the owner in Render (TMS_ADMIN_INITIAL_PASSWORD).
+
 ## 2026-11-24: Start the web-hosted version; password rules set by the admin
 
 - Owner: "lets fork the project and work on a webhosted version." Work happens on the branch `finch/web` (from `finch/work`), so the desktop testing release stays untouched. It can move to its own repository later with its history. Plan: `documents/HANDOFF.md` section 15.
