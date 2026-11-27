@@ -233,20 +233,53 @@ async function importBundledQuestionBanks() {
 
 module.exports.importBundledQuestionBanks = importBundledQuestionBanks;
 
+// Runs prisma/seed.ts only when it has new content: when its SEED_VERSION is
+// higher than the one recorded in Configuration (as the installed desktop app
+// does), or on a new database. The seed is slow over a long-distance database
+// link (about a minute), so the hosted site must not run it on every wake-up.
+async function seedIfNeeded() {
+    const { execFileSync } = require("node:child_process");
+    const { PrismaClient } = require("@prisma/client");
+    const source = fs.readFileSync(path.join(ROOT, "prisma", "seed.ts"), "utf8");
+    const version = Number(source.match(/const SEED_VERSION = (\d+);/)?.[1] ?? 1);
+    const prisma = new PrismaClient();
+    try {
+        const recorded = await prisma.configuration.findUnique({ where: { key: "SeedVersion" } });
+        const hasAdmin = await prisma.user.count({ where: { username: "admin" } });
+        if (hasAdmin && Number(recorded?.value) >= version) return false;
+        const tsx = path.join(ROOT, "node_modules", ".bin", process.platform === "win32" ? "tsx.cmd" : "tsx");
+        execFileSync(tsx, ["prisma/seed.ts"], { cwd: ROOT, stdio: "inherit", env: process.env });
+        await prisma.configuration.upsert({
+            where: { key: "SeedVersion" },
+            update: { value: String(version) },
+            create: { key: "SeedVersion", value: String(version), description: "Seed version last applied" }
+        });
+        return true;
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+module.exports.seedIfNeeded = seedIfNeeded;
+
 if (require.main === module) {
     require("../electron/main/load-env").loadEnv(ROOT);
     const port = Number(process.env.PORT) || 8080;
-    (async () => {
-        const created = await importBundledQuestionBanks();
-        if (created) console.log(`Question banks imported: ${created} new questions.`);
-        const { server } = createWebServer();
-        server.listen(port, () => {
-            const { getLogger } = require("../electron/main/logging-service");
-            getLogger().application("WEB_SERVER_STARTED", { port });
-            console.log(`HSUSA TMS web version: http://localhost:${port}`);
+    const { getLogger } = require("../electron/main/logging-service");
+    // Open the site first: a host waits only a few minutes for the port, and a
+    // free host that wakes on a visit should answer as soon as it can. New
+    // starting data and question banks are then brought in behind it.
+    const { server } = createWebServer();
+    server.listen(port, () => {
+        getLogger().application("WEB_SERVER_STARTED", { port });
+        console.log(`HSUSA TMS web version: http://localhost:${port}`);
+        (async () => {
+            if (await seedIfNeeded()) console.log("Starting data added.");
+            const created = await importBundledQuestionBanks();
+            if (created) console.log(`Question banks imported: ${created} new questions.`);
+        })().catch((error) => {
+            getLogger().failure("WEB_STARTUP_DATA_FAILED", error);
+            console.error("Starting data or question banks could not be loaded:", error);
         });
-    })().catch((error) => {
-        console.error("The web server could not start:", error);
-        process.exit(1);
     });
 }
