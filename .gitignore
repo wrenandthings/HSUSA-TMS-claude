@@ -21,6 +21,7 @@ logs/
 # Build output: screens, bundled seed, installer
 dist/
 dist-electron/
+dist-web/
 release/
 
 # Tools

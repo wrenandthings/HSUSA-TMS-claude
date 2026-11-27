@@ -13,19 +13,9 @@ if (app.isPackaged) {
 } else {
     require("./electron/main/load-env").loadEnv(__dirname);
 }
-const { registerAuthenticationHandlers } = require("./electron/main/auth-handler");
-const { registerUserHandlers } = require("./electron/main/user-handler");
-const { registerRoleHandlers } = require("./electron/main/role-handler");
-const { registerSubjectHandlers } = require("./electron/main/subject-handler");
-const { registerQuestionHandlers } = require("./electron/main/question-handler");
-const { registerQualificationHandlers } = require("./electron/main/qualification-handler");
-const { registerConfigurationHandlers } = require("./electron/main/configuration-handler");
 const { getLogger } = require("./electron/main/logging-service");
-const { registerBackupHandlers, backUpIfDue } = require("./electron/main/backup-handler");
-const { registerQuizHandlers } = require("./electron/main/quiz-handler");
-const { registerTrainingHandlers } = require("./electron/main/training-handler");
-const { registerFlashcardHandlers } = require("./electron/main/flashcard-handler");
-const { registerAnalyticsHandlers } = require("./electron/main/analytics-handler");
+const { backUpIfDue } = require("./electron/main/backup-handler");
+const { registerAllHandlers } = require("./electron/main/register-handlers");
 
 process.on("uncaughtException", (error) => getLogger().failure("UNCAUGHT_EXCEPTION", error));
 process.on("unhandledRejection", (reason) => getLogger().failure("UNHANDLED_REJECTION", reason));
@@ -105,18 +95,7 @@ app.whenReady().then(async () => {
     getLogger().application("APP_STARTED", { version: app.getVersion(), installed: app.isPackaged });
     if (!(await prepareInstalledDatabase())) return;
     await resetAdminIfAsked();
-    registerUserHandlers();
-    registerSubjectHandlers();
-    registerQuestionHandlers();
-    registerAuthenticationHandlers();
-    registerRoleHandlers();
-    registerQualificationHandlers();
-    registerConfigurationHandlers();
-    registerBackupHandlers();
-    registerQuizHandlers();
-    registerTrainingHandlers();
-    registerFlashcardHandlers();
-    registerAnalyticsHandlers();
+    registerAllHandlers();
     createMainWindow();
     // A daily backup, in the background, once the window is open.
     void backUpIfDue();

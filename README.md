@@ -7,6 +7,7 @@ A Windows desktop app (Electron, React, Prisma, SQLite) that works offline. Stat
 ## Guides
 
 - **Getting Started** (new users) and **Complete Documentation** (the full reference): `documents/GUIDES.md` has the links. Both are also built into the app, on the **Help** page.
+- **Web version** (branch `finch/web`): double-click `start-web.cmd`, or `npm run web:build` then `npm run web:start`, and open http://localhost:8080.
 - **Full handoff and web hosting roadmap** (start here as a new agent): `documents/HANDOFF.md`.
 - **Every owner decision**, with its date: `documents/DECISIONS.md`.
 - **Qualification rules:** `documents/QUALIFICATION_SPECIFICATION.md`.

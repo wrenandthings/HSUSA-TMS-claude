@@ -444,6 +444,13 @@ Hosting options (look up prices with the owner):
 
 Suggestion: Azure. The choice, account and payment are the owner's; agents never create paid services or handle keys.
 
+Progress on branch `finch/web` (2026-11-27):
+
+- Steps 1, 2 and 4 are done, more simply than planned. The screens are unchanged: the web build makes `window.hsusa` from `electron/preload/preload.js` itself (`server/api-from-preload.js`, `vite.web.config.ts`), so the two versions cannot drift apart. The handlers are unchanged: `auth-context.js` keeps the signed-in person per request (AsyncLocalStorage) when run by the server, and in a module variable on the desktop. `electron/main/register-handlers.js` registers them for both.
+- `server/web-server.js`: plain Node `http`, no new packages. `POST /api/<channel>` with an `X-TMS: 1` header; HttpOnly SameSite=Strict session cookie (add `Secure` with `TMS_SECURE_COOKIES=1` behind HTTPS); a new session id at each sign-in; server-side idle sign-out from SessionTimeoutMinutes; 10 failed sign-ins per address locks sign-in for 15 minutes; 20 MB request limit; serves `dist-web/`. Sessions are in memory (a restart signs everyone out).
+- Run it: `npm run web:build` then `npm run web:start` (port 8080), or double-click `start-web.cmd`. Tests: `tests/db/web-server.test.ts`.
+- Left in phase 1: step 3 (PostgreSQL) and step 5 (transactions). Phase 2 also needs the owner to try it in a browser.
+
 Phases and gates:
 
 1. Prepare the code inside the desktop app (steps 1-3, 5). No cost. Gate: all tests pass on both databases; desktop unchanged for users.
