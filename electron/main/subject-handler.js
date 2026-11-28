@@ -1,10 +1,10 @@
 const { ipcMain } = require("electron");
-const { PrismaClient } = require("@prisma/client");
+const { getPrisma } = require("./prisma-client");
 const { guarded } = require("./require-role");
 // Same people who manage the question bank (question-handler.js).
 const SUBJECT_MANAGER_ROLES = ["Administrator", "Director_of_Operations", "Chief_Pilot", "Training_Manager"];
 
-const prisma = new PrismaClient();
+const prisma = getPrisma();
 
 // Subjects have a short code (MAINT) and a name (Maintenance); owner question
 // 15. Codes are stored in upper case with underscores, as in the seed data.

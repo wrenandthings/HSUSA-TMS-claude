@@ -19,7 +19,7 @@
     "test:postgres": "node scripts/test-postgres.js",
     "db:postgres-schema": "node scripts/postgres-schema.js",
     "web:prepare": "prisma generate --schema prisma/postgres/schema.prisma && vite build --config vite.web.config.ts",
-    "web:serve": "prisma migrate deploy --schema prisma/postgres/schema.prisma && node server/web-server.js"
+    "web:serve": "node server/migrate.js && node server/web-server.js"
   },
   "repository": {
     "type": "git",

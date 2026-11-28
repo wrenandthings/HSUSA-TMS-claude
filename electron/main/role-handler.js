@@ -1,9 +1,9 @@
 const { ipcMain } = require("electron");
-const { PrismaClient } = require("@prisma/client");
+const { getPrisma } = require("./prisma-client");
 
 const { guarded } = require("./require-role");
 
-const prisma = new PrismaClient();
+const prisma = getPrisma();
 const ADMIN_ONLY = "Only an Administrator can change roles.";
 // The Administrator role keeps the app manageable; it cannot be renamed or deleted.
 const PROTECTED_ROLES = ["Administrator"];

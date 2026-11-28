@@ -1,12 +1,12 @@
 const { ipcMain } = require("electron");
-const { PrismaClient } = require("@prisma/client");
+const { getPrisma } = require("./prisma-client");
 const { setCurrentUser, clearCurrentUser, getCurrentUserId } = require("./auth-context");
 const { createAuthService } = require("./auth-service");
 const { createConfigurationService } = require("./configuration-service");
 const { getLogger } = require("./logging-service");
 const { describePasswordRules, loadPasswordRules } = require("./passwords");
 
-const prisma = new PrismaClient();
+const prisma = getPrisma();
 const auth = createAuthService(prisma);
 const settings = createConfigurationService(prisma);
 

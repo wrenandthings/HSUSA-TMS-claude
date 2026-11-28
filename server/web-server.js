@@ -242,11 +242,11 @@ module.exports = { createWebServer };
 // changed since it was last imported, as the installed desktop app does at
 // start. Updating a bank for everyone = replace the CSV and restart.
 async function importBundledQuestionBanks() {
-    const { PrismaClient } = require("@prisma/client");
+    const { createPrismaClient } = require("../electron/main/prisma-client");
     const { importBundledBanks } = require("../electron/main/first-run");
     const { createQuestionBankImporter } = require("../electron/main/question-bank");
     const { getLogger } = require("../electron/main/logging-service");
-    const prisma = new PrismaClient();
+    const prisma = createPrismaClient(1);
     try {
         return await importBundledBanks(prisma, path.join(ROOT, "documents", "question-banks"), createQuestionBankImporter(prisma),
             (file, result) => getLogger().application(result?.success ? "QUESTION_BANK_IMPORTED" : "QUESTION_BANK_IMPORT_FAILED", { file, created: result?.created, updated: result?.updated, message: result?.message }));
@@ -263,16 +263,16 @@ module.exports.importBundledQuestionBanks = importBundledQuestionBanks;
 // link (about a minute), so the hosted site must not run it on every wake-up.
 async function seedIfNeeded() {
     const { execFileSync } = require("node:child_process");
-    const { PrismaClient } = require("@prisma/client");
+    const { createPrismaClient, limitedUrl } = require("../electron/main/prisma-client");
     const source = fs.readFileSync(path.join(ROOT, "prisma", "seed.ts"), "utf8");
     const version = Number(source.match(/const SEED_VERSION = (\d+);/)?.[1] ?? 1);
-    const prisma = new PrismaClient();
+    const prisma = createPrismaClient(1);
     try {
         const recorded = await prisma.configuration.findUnique({ where: { key: "SeedVersion" } });
         const hasAdmin = await prisma.user.count({ where: { username: "admin" } });
         if (hasAdmin && Number(recorded?.value) >= version) return false;
         const tsx = path.join(ROOT, "node_modules", ".bin", process.platform === "win32" ? "tsx.cmd" : "tsx");
-        execFileSync(tsx, ["prisma/seed.ts"], { cwd: ROOT, stdio: "inherit", env: process.env });
+        execFileSync(tsx, ["prisma/seed.ts"], { cwd: ROOT, stdio: "inherit", env: { ...process.env, DATABASE_URL: limitedUrl(process.env.DATABASE_URL, 1) } });
         await prisma.configuration.upsert({
             where: { key: "SeedVersion" },
             update: { value: String(version) },

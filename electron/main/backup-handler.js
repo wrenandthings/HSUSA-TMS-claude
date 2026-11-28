@@ -1,11 +1,11 @@
 const path = require("path");
 const { ipcMain } = require("electron");
-const { PrismaClient } = require("@prisma/client");
+const { getPrisma } = require("./prisma-client");
 const { getCurrentUserId } = require("./auth-context");
 const { createBackupService, databaseFile } = require("./backup-service");
 const { getLogger } = require("./logging-service");
 
-const prisma = new PrismaClient();
+const prisma = getPrisma();
 let service = null;
 
 // The backups folder sits next to the database file (owner, question 26).

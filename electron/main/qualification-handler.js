@@ -1,9 +1,9 @@
 const { ipcMain } = require("electron");
-const { PrismaClient } = require("@prisma/client");
+const { getPrisma } = require("./prisma-client");
 const { getCurrentUserId } = require("./auth-context");
 const { createQualificationRepository } = require("./qualification-repository");
 
-const prisma = new PrismaClient();
+const prisma = getPrisma();
 const repository = createQualificationRepository(prisma);
 
 // Roles that may create, assign, renew, suspend and remove qualifications

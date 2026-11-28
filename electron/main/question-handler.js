@@ -1,15 +1,13 @@
 const {
     ipcMain
 } = require("electron");
-const {
-    PrismaClient
-} = require("@prisma/client");
 
 const { getCurrentUserId } = require("./auth-context");
 const { createQuestionBankImporter } = require("./question-bank");
 const { getLogger } = require("./logging-service");
 
-const prisma = new PrismaClient();
+const { getPrisma } = require("./prisma-client");
+const prisma = getPrisma();
 const bankImporter = createQuestionBankImporter(prisma);
 
 // Roles with Question Management in the Seed Data Specification v1.0.

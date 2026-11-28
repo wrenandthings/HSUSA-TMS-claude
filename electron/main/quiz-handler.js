@@ -1,10 +1,10 @@
 const { ipcMain } = require("electron");
-const { PrismaClient } = require("@prisma/client");
+const { getPrisma } = require("./prisma-client");
 const { getCurrentUserId } = require("./auth-context");
 const { createQuizService } = require("./quiz-service");
 const { getLogger } = require("./logging-service");
 
-const prisma = new PrismaClient();
+const prisma = getPrisma();
 const quizzes = createQuizService(prisma);
 
 // Every signed-in user may take quizzes; each person only sees their own.

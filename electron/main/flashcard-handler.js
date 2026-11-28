@@ -1,10 +1,10 @@
 const { ipcMain } = require("electron");
-const { PrismaClient } = require("@prisma/client");
+const { getPrisma } = require("./prisma-client");
 const { getCurrentUserId } = require("./auth-context");
 const { createFlashcardService } = require("./flashcard-service");
 const { getLogger } = require("./logging-service");
 
-const prisma = new PrismaClient();
+const prisma = getPrisma();
 const flashcards = createFlashcardService(prisma);
 
 function handle(channel, work) {

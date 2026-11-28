@@ -1,9 +1,9 @@
 const { ipcMain } = require("electron");
-const { PrismaClient } = require("@prisma/client");
+const { getPrisma } = require("./prisma-client");
 const { getCurrentUserId } = require("./auth-context");
 const { createAuthService } = require("./auth-service");
 
-const prisma = new PrismaClient();
+const prisma = getPrisma();
 const auth = createAuthService(prisma);
 
 // Password hashes never leave the main process.
