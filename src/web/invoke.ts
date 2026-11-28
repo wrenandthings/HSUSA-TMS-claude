@@ -6,6 +6,8 @@
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 export const reviveDates = (_key: string, value: unknown) => (typeof value === "string" && ISO_DATE.test(value) ? new Date(value) : value);
 
+export const SESSION_ENDED = "tms-session-ended";
+
 export async function invoke(channel: string, input?: unknown): Promise<any> {
     let response: Response;
     try {
@@ -19,9 +21,18 @@ export async function invoke(channel: string, input?: unknown): Promise<any> {
         return { success: false, message: "No connection to the server. Check your internet connection and try again." };
     }
     const text = await response.text();
+    let result: any;
     try {
-        return JSON.parse(text, reviveDates);
+        result = JSON.parse(text, reviveDates);
     } catch {
         return { success: false, message: `The server answered with an error (${response.status}).` };
     }
+    // The server no longer knows who this is (sign-in expired). Tell the app,
+    // which returns to the sign-in screen, and never hand the page this answer:
+    // pages expecting a list would break on it.
+    if (result?.success === false && result?.message === "Authentication required" && !channel.startsWith("auth-")) {
+        window.dispatchEvent(new CustomEvent(SESSION_ENDED));
+        return new Promise(() => {});
+    }
+    return result;
 }

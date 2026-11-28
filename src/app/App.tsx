@@ -46,6 +46,18 @@ export default function App() {
     const [timeoutMinutes, setTimeoutMinutes] = useState(30);
     const [notice, setNotice] = useState("");
     useIdleSignOut(loggedIn, timeoutMinutes, () => void signOut("idle"));
+    // Web version only: the server says the sign-in has ended (src/web/invoke.ts).
+    useEffect(() => {
+        if (!loggedIn) return;
+        const ended = () => {
+            setNotice("Your sign-in has ended. Sign in again to continue.");
+            setSection("home");
+            setUsername("");
+            setLoggedIn(false);
+        };
+        window.addEventListener("tms-session-ended", ended);
+        return () => window.removeEventListener("tms-session-ended", ended);
+    }, [loggedIn]);
     const goHome = () => open("home");
     // Managers see Approvals, with a count of records waiting.
     const [canApprove, setCanApprove] = useState(false);

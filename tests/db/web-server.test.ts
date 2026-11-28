@@ -111,6 +111,32 @@ describe("web server", () => {
         expect((await guesser("auth-login", { username: "admin", password: "Hangar-Door-42x" })).body.success).toBe(true);
     });
 
+    it("answers nothing but sign-in to a browser that is not signed in", async () => {
+        const stranger = browser();
+        for (const channel of ["users-get-all", "questions-get-all", "subjects-get-all", "qualifications-get-all", "users-get-by-id"]) {
+            expect((await stranger(channel)).body, channel).toEqual({ success: false, message: "Authentication required" });
+        }
+        expect((await stranger("auth-password-rules")).body.success).toBe(true);
+    });
+
+    it("keeps a sign-in when the server restarts (a free host sleeping), and refuses a forged cookie", async () => {
+        const pilot = browser();
+        const login = await pilot("auth-login", { username: "User", password: "Rotor-Blade-77y" });
+        const cookie = String(login.setCookie).split(";")[0];
+        const { createWebServer } = require(path.join(root, "server/web-server.js"));
+        const restarted = createWebServer({ staticDir: os.tmpdir(), now: () => clock }).server;
+        await new Promise<void>((resolve) => restarted.listen(0, "127.0.0.1", resolve));
+        const ask = (value: string) => fetch(`http://127.0.0.1:${(restarted.address() as AddressInfo).port}/api/training-mine`, {
+            method: "POST", headers: { "Content-Type": "application/json", "X-TMS": "1", Cookie: value }, body: ""
+        }).then((r) => r.json());
+        expect((await ask(cookie)).success).toBe(true);
+        const [name, value] = cookie.split("=");
+        const [body] = value.split(".");
+        const forged = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(body, "base64url").toString()), userId: "someone-else" })).toString("base64url");
+        expect(await ask(`${name}=${forged}.${value.split(".")[1]}`)).toEqual({ success: false, message: "Authentication required" });
+        await new Promise((resolve) => restarted.close(resolve));
+    });
+
     it("serves the screens, and never files outside them", async () => {
         expect(await (await fetch(`${base}/`)).text()).toBe("<html>TMS</html>");
         expect(await (await fetch(`${base}/assets/app.js`)).text()).toBe("console.log(1)");

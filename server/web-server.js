@@ -19,6 +19,10 @@ const SESSION_COOKIE = "tms_session";
 const MAX_BODY_BYTES = 20 * 1024 * 1024; // question-bank CSVs are a few MB
 const FAILED_SIGN_IN_LIMIT = 10; // per address, per 15 minutes
 const FAILED_SIGN_IN_WINDOW_MS = 15 * 60 * 1000;
+// The only calls answered without a sign-in. Everything else is refused here,
+// before any handler runs, so nothing can be read by a stranger even where a
+// desktop-era handler forgot to check (users, questions, subjects lists).
+const PUBLIC_CHANNELS = new Set(["auth-login", "auth-password-rules", "auth-logout"]);
 
 const TYPES = {
     ".html": "text/html; charset=utf-8",
@@ -34,8 +38,11 @@ const TYPES = {
 
 // The handlers call require("electron").ipcMain.handle(channel, fn). Outside
 // Electron, give them a stand-in that collects the functions instead.
+let registry = null;
 function installHandlerRegistry() {
+    if (registry) return registry;
     const handlers = new Map();
+    registry = handlers;
     const fake = { ipcMain: { handle: (channel, fn) => handlers.set(channel, fn) } };
     let electronPath;
     try { electronPath = require.resolve("electron"); } catch { electronPath = path.join(ROOT, "node_modules", "electron", "index.js"); }
@@ -73,27 +80,41 @@ function createWebServer(options = {}) {
     const secureCookies = options.secureCookies ?? process.env.TMS_SECURE_COOKIES === "1";
     const now = options.now ?? (() => Date.now());
 
+    const firstServer = !registry;
     const handlers = installHandlerRegistry();
     const { runWithUser } = require("../electron/main/auth-context");
     const { registerAllHandlers } = require("../electron/main/register-handlers");
     const { getLogger } = require("../electron/main/logging-service");
-    registerAllHandlers();
+    if (firstServer) registerAllHandlers();
 
-    // Who is signed in, per browser. Kept in memory: a restart signs everyone
-    // out. A hosted version with several servers would keep this in the database.
-    const sessions = new Map(); // id -> { userId, lastSeen, timeoutMinutes }
+    // Who is signed in, per browser: a signed cookie holding the person's id,
+    // when they were last active and their idle limit. It is kept by the
+    // browser, so a free host that sleeps and wakes (losing its memory) does
+    // not sign everyone out. The signature key is SESSION_SECRET, or else
+    // derived from DATABASE_URL (itself a secret the host keeps), so it stays
+    // the same across restarts without another setting to manage.
+    const secret = options.sessionSecret ?? process.env.SESSION_SECRET
+        ?? (process.env.DATABASE_URL ? crypto.createHash("sha256").update(`tms-session:${process.env.DATABASE_URL}`).digest("hex") : crypto.randomBytes(32).toString("hex"));
+    const sign = (body) => crypto.createHmac("sha256", secret).update(body).digest("base64url");
     const failures = new Map(); // address -> [times]
 
-    function sessionFor(request) {
-        const id = readCookie(request, SESSION_COOKIE);
-        const session = id ? sessions.get(id) : null;
-        if (!session) return { id: null, session: null };
+    function readSession(request) {
+        const raw = readCookie(request, SESSION_COOKIE);
+        if (!raw || !raw.includes(".")) return null;
+        const [body, signature] = raw.split(".");
+        const expected = sign(body);
+        if (!signature || signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+        let session;
+        try { session = JSON.parse(Buffer.from(body, "base64url").toString("utf8")); } catch { return null; }
+        if (!session?.userId) return null;
         // Server-side idle sign-out, with the same setting as the desktop window.
-        if (now() - session.lastSeen > session.timeoutMinutes * 60 * 1000) {
-            sessions.delete(id);
-            return { id: null, session: null };
-        }
-        return { id, session };
+        if (now() - Number(session.lastSeen) > Number(session.timeoutMinutes || 30) * 60 * 1000) return null;
+        return session;
+    }
+
+    function sessionCookie(session) {
+        const body = Buffer.from(JSON.stringify(session)).toString("base64url");
+        return cookie(`${body}.${sign(body)}`, 12 * 60 * 60);
     }
 
     function cookie(value, maxAgeSeconds) {
@@ -140,28 +161,31 @@ function createWebServer(options = {}) {
         }
         if (input === null) input = undefined;
 
-        const { id, session } = sessionFor(request);
+        const session = readSession(request);
+        if (!session && !PUBLIC_CHANNELS.has(channel)) {
+            const headers = readCookie(request, SESSION_COOKIE) ? { "Set-Cookie": cookie("", 0) } : {};
+            return send(200, { success: false, message: "Authentication required" }, headers);
+        }
         let outcome;
         try {
             outcome = await runWithUser(session?.userId ?? null, () => handler({ sender: null }, input));
         } catch (error) {
             getLogger().failure("WEB_REQUEST_FAILED", error);
+            // Also to the console, so the host's log shows it (its disk is not kept).
+            console.error(`Request ${channel} failed:`, error);
             return send(500, { success: false, message: "Something went wrong. It has been logged." });
         }
 
         const headers = {};
         if (outcome.userId && outcome.userId !== session?.userId) {
-            // Signed in: always a new session id, so an old one cannot be reused.
-            if (id) sessions.delete(id);
-            const newId = crypto.randomBytes(32).toString("base64url");
+            // Signed in (or as someone else): a new cookie.
             const timeoutMinutes = Number(outcome.result?.sessionTimeoutMinutes) || 30;
-            sessions.set(newId, { userId: outcome.userId, lastSeen: now(), timeoutMinutes });
-            headers["Set-Cookie"] = cookie(newId, 12 * 60 * 60);
-        } else if (!outcome.userId && id) {
-            sessions.delete(id); // signed out
-            headers["Set-Cookie"] = cookie("", 0);
+            headers["Set-Cookie"] = sessionCookie({ userId: outcome.userId, lastSeen: now(), timeoutMinutes, issued: now() });
+        } else if (!outcome.userId && session) {
+            headers["Set-Cookie"] = cookie("", 0); // signed out
         } else if (session) {
-            session.lastSeen = now();
+            // Still active: move the idle clock on.
+            headers["Set-Cookie"] = sessionCookie({ ...session, lastSeen: now() });
         }
         if (channel === "auth-login" && !outcome.result?.success) {
             failures.set(address, [...(failures.get(address) ?? []), now()]);
@@ -209,7 +233,7 @@ function createWebServer(options = {}) {
         }
     });
 
-    return { server, handlers, sessions };
+    return { server, handlers };
 }
 
 module.exports = { createWebServer };
